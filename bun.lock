@@ -2,7 +2,7 @@
   "lockfileVersion": 1,
   "workspaces": {
     "": {
-      "name": "bb-scaffold",
+      "name": "nextjs-reference-implementation",
       "dependencies": {
         "@apollo/client": "^4.1.7",
         "@apollo/client-integration-nextjs": "^0.14.5",

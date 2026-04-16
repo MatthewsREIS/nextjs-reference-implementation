@@ -1,4 +1,4 @@
-# builder-base
+# nextjs-reference-implementation
 
 A reference implementation for internal builders: a Next.js App Router app that
 authenticates users against Okta via OIDC, gates every route behind that
@@ -154,7 +154,7 @@ which runs the `jwt` callback above.
 
 ## Deploying
 
-- Set `AUTH_URL` to the deployed origin (e.g. `https://builder-base.example.com`).
+- Set `AUTH_URL` to the deployed origin (e.g. `https://nextjs-reference-implementation.example.com`).
 - Set `AUTH_TRUST_HOST=true` unless deploying to Vercel.
 - Add the deployed callback URL to your Okta app's **Sign-in redirect URIs**.
 - Rotate `AUTH_SECRET` per environment and store it in your secret manager.
