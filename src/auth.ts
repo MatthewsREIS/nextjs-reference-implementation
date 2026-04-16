@@ -10,6 +10,9 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   providers: [
     Okta({
       authorization: { params: { scope: OKTA_SCOPES } },
+      // Public OIDC client — no client secret. Auth.js still sends a PKCE
+      // challenge (via the default provider `checks: ["pkce", "state"]`).
+      client: { token_endpoint_auth_method: "none" },
     }),
   ],
   callbacks: {
@@ -42,7 +45,6 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
               grant_type: "refresh_token",
               refresh_token: token.refreshToken,
               client_id: process.env.AUTH_OKTA_ID!,
-              client_secret: process.env.AUTH_OKTA_SECRET!,
               scope: OKTA_SCOPES,
             }),
           },

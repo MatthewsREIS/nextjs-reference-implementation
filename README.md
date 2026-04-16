@@ -58,19 +58,30 @@ Okta access token. Built with:
 
 ## Okta app setup
 
+This repo uses a **public OIDC client** — PKCE-protected Authorization Code
+flow with **no client secret**. Pick either app type in Okta:
+
+- **Single-Page Application (SPA)**, or
+- **Web Application** with **Client authentication: None** and **PKCE required**
+
+Either works with Auth.js; both are "public clients" to OAuth.
+
 1. Okta Admin Console → **Applications** → **Create App Integration**
-2. Choose **OIDC - OpenID Connect**, then **Web Application**.
+2. Choose **OIDC - OpenID Connect**, then **Single-Page Application**
+   (or **Web Application** — see note above).
 3. **Grant types**: check **Authorization Code** and **Refresh Token**.
-4. **Sign-in redirect URIs** — add one per environment:
+4. **Client authentication**: **None** (if editing a Web App).
+   **Require PKCE as additional verification**: ✅ checked.
+5. **Sign-in redirect URIs** — add one per environment:
    - `http://localhost:3000/api/auth/callback/okta`
    - `https://<your-prod-host>/api/auth/callback/okta`
-5. **Sign-out redirect URIs**:
+6. **Sign-out redirect URIs**:
    - `http://localhost:3000`
    - `https://<your-prod-host>`
-6. **Controlled access**: assign the appropriate groups.
-7. After save, copy the **Client ID** and **Client Secret** from the General
-   tab. These go into `AUTH_OKTA_ID` / `AUTH_OKTA_SECRET`.
-8. Your `AUTH_OKTA_ISSUER` is the base Okta domain, e.g.
+7. **Controlled access**: assign the appropriate groups.
+8. After save, copy the **Client ID** from General → Client Credentials into
+   `AUTH_OKTA_ID`. There is no client secret for public clients.
+9. Your `AUTH_OKTA_ISSUER` is the base Okta domain, e.g.
    `https://your-org.okta.com` — **no** `/oauth2/default` suffix. This repo
    uses the Org Authorization Server and hits `/oauth2/v1/token` for refresh.
 
@@ -83,9 +94,7 @@ Okta access token. Built with:
 bun install
 
 # Generate a session-signing secret
-bunx auth secret --raw | tr -d '\n' | {
-  read s; printf "AUTH_SECRET=%s\n" "$s" > .env.local
-}
+printf "AUTH_SECRET=%s\n" "$(openssl rand -base64 33)" > .env.local
 
 # Append the rest — edit the placeholders in .env.example, then:
 cat .env.example >> .env.local   # and fill in values
