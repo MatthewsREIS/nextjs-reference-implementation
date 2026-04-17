@@ -147,16 +147,14 @@ export default async function Home() {
         </CardContent>
       </Card>
 
-      {/* Card 3 — client useQuery + search + edge filter + or */}
+      {/* Card 3 — client useQuery + full-text search */}
       <Card>
         <CardHeader>
-          <CardTitle>
-            3. Search with edge filtering and <code>or</code>
-          </CardTitle>
+          <CardTitle>3. Full-text search</CardTitle>
           <CardDescription>
-            Matches proposals whose name contains the query{" "}
-            <em>or</em> whose client full-name contains it. The{" "}
-            <code>hasClientWith</code> clause is the edge-filter pattern.
+            <code>where: {"{ search: $query }"}</code> — the
+            Meilisearch-backed search field that spans multiple indexed
+            columns on the proposal.
           </CardDescription>
         </CardHeader>
         <CardContent>

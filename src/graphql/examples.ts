@@ -35,18 +35,10 @@ export const RECENT_NOTIFICATIONS_QUERY = gql`
   }
 `;
 
-// --- Card 3: search + edge filter + or-composition ---
+// --- Card 3: full-text search via Meilisearch-backed `search` field ---
 export const SEARCH_PROPOSALS_QUERY = gql`
   query SearchProposals($query: String!) {
-    proposals(
-      where: {
-        or: [
-          { nameContainsFold: $query }
-          { hasClientWith: [{ fullNameContainsFold: $query }] }
-        ]
-      }
-      first: 10
-    ) {
+    proposals(where: { search: $query }, first: 10) {
       edges {
         node {
           id
