@@ -65,8 +65,7 @@ export const SEARCH_PROPOSALS_QUERY = gql`
 // The mutation writes the value back unchanged.
 export const WEEKLY_CALL_COMMITMENT_QUERY = gql`
   query WeeklyCallCommitment {
-    viewer {
-      id
+    UserSettings {
       weeklyCallCommitment
     }
   }

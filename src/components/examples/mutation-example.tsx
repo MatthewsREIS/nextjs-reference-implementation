@@ -10,7 +10,7 @@ import {
 } from "@/graphql/examples";
 
 type ViewerData = {
-  viewer: { id: string; weeklyCallCommitment: number | null } | null;
+  UserSettings: { weeklyCallCommitment: number | null } | null;
 };
 
 type MutationResult = {
@@ -29,7 +29,7 @@ export function MutationExample() {
     { loading: mutating, error: mutationError, data: mutationData },
   ] = useMutation<MutationResult>(UPDATE_COMMITMENTS_NOOP_MUTATION);
 
-  const current = data?.viewer?.weeklyCallCommitment ?? null;
+  const current = data?.UserSettings?.weeklyCallCommitment ?? null;
 
   return (
     <div className="space-y-3">
