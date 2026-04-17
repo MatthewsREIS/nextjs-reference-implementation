@@ -110,6 +110,14 @@ export default async function Home() {
             <code>src/graphql/examples.ts</code> and{" "}
             <code>src/components/examples/</code>; copy buttons on every
             snippet make it easy to paste patterns into your own code.
+            <br />
+            <br />
+            Artemis&rsquo; public docs don&rsquo;t expose a schema
+            reference, and the GraphQL endpoint is behind Okta — so the{" "}
+            <strong>schema introspection</strong> card (7) is the easiest
+            way to browse every type and field available. It runs the
+            standard introspection query through the same authenticated
+            client the rest of the app uses and prints the result as SDL.
           </CardDescription>
         </CardHeader>
       </Card>
