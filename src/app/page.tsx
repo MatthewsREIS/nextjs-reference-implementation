@@ -16,7 +16,7 @@ import {
 } from "@/components/examples/suspense-example";
 import { SuspenseExampleCsr } from "@/components/examples/suspense-example-csr";
 import { MutationExample } from "@/components/examples/mutation-example";
-import { SchemaExplorerClient } from "@/components/examples/schema-explorer-client";
+import { SchemaExplorer } from "@/components/examples/schema-explorer";
 import {
   Card,
   CardContent,
@@ -212,26 +212,19 @@ export default async function Home() {
         </CardContent>
       </Card>
 
-      {/* Card 7 — Introspection + graphql-voyager visualization */}
+      {/* Card 7 — Introspection rendered as SDL */}
       <Card>
         <CardHeader>
           <CardTitle>7. Schema introspection</CardTitle>
           <CardDescription>
-            Runs the standard GraphQL introspection query against Artemis
-            and hands the result to{" "}
-            <a
-              href="https://github.com/graphql-kit/graphql-voyager"
-              target="_blank"
-              rel="noreferrer"
-              className="underline"
-            >
-              graphql-voyager
-            </a>{" "}
-            for an interactive force-directed view of every type and field.
+            Runs the standard introspection query against Artemis, rebuilds
+            a <code>GraphQLSchema</code> via <code>buildClientSchema</code>,
+            and prints it as SDL with <code>printSchema</code>. Both
+            helpers come from the <code>graphql</code> package.
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <SchemaExplorerClient />
+          <SchemaExplorer />
         </CardContent>
       </Card>
 
