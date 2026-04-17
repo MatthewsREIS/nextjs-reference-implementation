@@ -33,11 +33,23 @@ export function MutationExample() {
 
   return (
     <div className="space-y-3">
-      <CodeBlock>{print(UPDATE_COMMITMENTS_NOOP_MUTATION)}</CodeBlock>
+      <CodeBlock label="Mutation">
+        {print(UPDATE_COMMITMENTS_NOOP_MUTATION)}
+      </CodeBlock>
 
       {queryError && (
         <pre className="text-sm text-destructive">{queryError.message}</pre>
       )}
+
+      {mutationData && (
+        <CodeBlock label="Response">
+          {JSON.stringify(mutationData, null, 2)}
+        </CodeBlock>
+      )}
+
+      <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+        Rendered
+      </p>
 
       <p className="text-sm">
         Current <code>weeklyCallCommitment</code>:{" "}
@@ -65,15 +77,12 @@ export function MutationExample() {
       )}
 
       {mutationData && (
-        <>
-          <p className="text-sm text-muted-foreground">
-            Server returned:{" "}
-            <span className="font-mono">
-              {String(mutationData.UpdateUserSettings?.weeklyCallCommitment)}
-            </span>
-          </p>
-          <CodeBlock>{JSON.stringify(mutationData, null, 2)}</CodeBlock>
-        </>
+        <p className="text-sm text-muted-foreground">
+          Server returned:{" "}
+          <span className="font-mono">
+            {String(mutationData.UpdateUserSettings?.weeklyCallCommitment)}
+          </span>
+        </p>
       )}
     </div>
   );

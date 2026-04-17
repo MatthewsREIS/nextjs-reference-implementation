@@ -90,7 +90,7 @@ export default async function Home() {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-3">
-          <CodeBlock>{print(NOTIFICATIONS_COUNT_QUERY)}</CodeBlock>
+          <CodeBlock label="Query">{print(NOTIFICATIONS_COUNT_QUERY)}</CodeBlock>
           {countError ? (
             <pre className="text-sm text-destructive">
               {countError instanceof Error
@@ -99,13 +99,18 @@ export default async function Home() {
             </pre>
           ) : (
             <>
+              <CodeBlock label="Response">
+                {JSON.stringify(countData, null, 2)}
+              </CodeBlock>
+              <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                Rendered
+              </p>
               <p className="text-sm">
                 Unread notifications:{" "}
                 <span className="font-mono">
                   {countData?.notifications?.totalCount ?? "—"}
                 </span>
               </p>
-              <CodeBlock>{JSON.stringify(countData, null, 2)}</CodeBlock>
             </>
           )}
         </CardContent>
@@ -154,7 +159,10 @@ export default async function Home() {
             <code>Suspense</code> boundary. No waterfall.
           </CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="space-y-3">
+          <CodeBlock label="Query">
+            {print(RECENT_NOTIFICATIONS_QUERY)}
+          </CodeBlock>
           <PreloadQuery
             query={RECENT_NOTIFICATIONS_QUERY}
             variables={SUSPENSE_VARS}

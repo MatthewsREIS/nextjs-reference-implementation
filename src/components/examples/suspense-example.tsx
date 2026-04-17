@@ -24,6 +24,12 @@ export function SuspenseExample() {
 
   return (
     <div className="space-y-3">
+      <CodeBlock label="Response">{JSON.stringify(data, null, 2)}</CodeBlock>
+
+      <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+        Rendered
+      </p>
+
       {edges.length === 0 ? (
         <p className="text-sm text-muted-foreground">
           No unread notifications.
@@ -39,7 +45,6 @@ export function SuspenseExample() {
           )}
         </ul>
       )}
-      <CodeBlock>{JSON.stringify(data, null, 2)}</CodeBlock>
     </div>
   );
 }

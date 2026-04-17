@@ -31,7 +31,7 @@ export function SearchExample() {
 
   return (
     <div className="space-y-3">
-      <CodeBlock>{print(SEARCH_PROPOSALS_QUERY)}</CodeBlock>
+      <CodeBlock label="Query">{print(SEARCH_PROPOSALS_QUERY)}</CodeBlock>
 
       <input
         type="text"
@@ -44,6 +44,14 @@ export function SearchExample() {
       {error && (
         <pre className="text-sm text-destructive">{error.message}</pre>
       )}
+
+      {!skip && data && (
+        <CodeBlock label="Response">{JSON.stringify(data, null, 2)}</CodeBlock>
+      )}
+
+      <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+        Rendered
+      </p>
 
       {skip ? (
         <p className="text-sm text-muted-foreground">
@@ -75,10 +83,6 @@ export function SearchExample() {
             ),
           )}
         </ul>
-      )}
-
-      {!skip && data && (
-        <CodeBlock>{JSON.stringify(data, null, 2)}</CodeBlock>
       )}
     </div>
   );

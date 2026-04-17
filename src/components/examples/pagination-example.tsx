@@ -28,11 +28,19 @@ export function PaginationExample() {
 
   return (
     <div className="space-y-3">
-      <CodeBlock>{print(RECENT_NOTIFICATIONS_QUERY)}</CodeBlock>
+      <CodeBlock label="Query">{print(RECENT_NOTIFICATIONS_QUERY)}</CodeBlock>
 
       {error && (
         <pre className="text-sm text-destructive">{error.message}</pre>
       )}
+
+      {data && (
+        <CodeBlock label="Response">{JSON.stringify(data, null, 2)}</CodeBlock>
+      )}
+
+      <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+        Rendered
+      </p>
 
       {loading && edges.length === 0 ? (
         <p className="text-sm text-muted-foreground">Loading…</p>
@@ -81,8 +89,6 @@ export function PaginationExample() {
           Load more
         </Button>
       )}
-
-      {data && <CodeBlock>{JSON.stringify(data, null, 2)}</CodeBlock>}
     </div>
   );
 }
