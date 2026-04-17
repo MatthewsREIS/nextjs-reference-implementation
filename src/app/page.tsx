@@ -16,6 +16,7 @@ import {
 } from "@/components/examples/suspense-example";
 import { SuspenseExampleCsr } from "@/components/examples/suspense-example-csr";
 import { MutationExample } from "@/components/examples/mutation-example";
+import { SchemaExplorerClient } from "@/components/examples/schema-explorer-client";
 import {
   Card,
   CardContent,
@@ -208,6 +209,29 @@ export default async function Home() {
         </CardHeader>
         <CardContent>
           <MutationExample />
+        </CardContent>
+      </Card>
+
+      {/* Card 7 — Introspection + graphql-voyager visualization */}
+      <Card>
+        <CardHeader>
+          <CardTitle>7. Schema introspection</CardTitle>
+          <CardDescription>
+            Runs the standard GraphQL introspection query against Artemis
+            and hands the result to{" "}
+            <a
+              href="https://github.com/graphql-kit/graphql-voyager"
+              target="_blank"
+              rel="noreferrer"
+              className="underline"
+            >
+              graphql-voyager
+            </a>{" "}
+            for an interactive force-directed view of every type and field.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <SchemaExplorerClient />
         </CardContent>
       </Card>
 

@@ -1,4 +1,5 @@
 import { gql } from "@apollo/client";
+import { getIntrospectionQuery } from "graphql";
 
 // --- Card 1: RSC scalar query with `where` ---
 export const NOTIFICATIONS_COUNT_QUERY = gql`
@@ -71,3 +72,8 @@ export const UPDATE_CALENDAR_URL_NOOP_MUTATION = gql`
     }
   }
 `;
+
+// --- Card 7: introspection query, visualized with graphql-voyager ---
+// Standard GraphQL introspection — server-safe (graphql package is already a
+// dep). Voyager accepts this response shape directly.
+export const INTROSPECTION_QUERY = gql(getIntrospectionQuery());
