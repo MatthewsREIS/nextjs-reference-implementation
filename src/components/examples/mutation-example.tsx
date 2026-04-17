@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { useMutation, useQuery } from "@apollo/client/react";
 import { print } from "graphql";
 import { Button } from "@/components/ui/button";
@@ -18,6 +19,12 @@ type MutationResult = {
 };
 
 export function MutationExample() {
+  // Gate to avoid hydration mismatch: SSR renders before useQuery resolves,
+  // client renders after it's fired. The `disabled` prop would otherwise
+  // differ between the two passes.
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+
   const {
     data,
     loading: queryLoading,
@@ -54,14 +61,16 @@ export function MutationExample() {
       <p className="text-sm">
         Current <code>calendarURL</code>:{" "}
         <span className="font-mono">
-          {queryLoading ? "loading…" : JSON.stringify(current)}
+          {!mounted || queryLoading
+            ? "loading…"
+            : JSON.stringify(current)}
         </span>
       </p>
 
       <Button
         size="sm"
         variant="outline"
-        disabled={mutating || queryLoading}
+        disabled={!mounted || mutating || queryLoading}
         onClick={() =>
           runMutation({ variables: { calendarURL: current } })
         }
