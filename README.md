@@ -75,9 +75,9 @@ Either works with Auth.js; both are "public clients" to OAuth.
 5. **Sign-in redirect URIs** — add one per environment:
    - `http://localhost:3000/api/auth/callback/okta`
    - `https://<your-prod-host>/api/auth/callback/okta`
-6. **Sign-out redirect URIs**:
-   - `http://localhost:3000`
-   - `https://<your-prod-host>`
+6. **Sign-out redirect URIs**: not required for this setup — sign-out is
+   local-only (see [Sign-out behavior](#sign-out-behavior)). Leave the field
+   empty unless you plan to switch to federated logout.
 7. **Controlled access**: assign the appropriate groups.
 8. After save, copy the **Client ID** from General → Client Credentials into
    `AUTH_OKTA_ID`. There is no client secret for public clients.
@@ -120,11 +120,14 @@ Visit `http://localhost:3000`:
 | --- | --- |
 | `src/auth.config.ts` | Edge-safe Auth.js config (providers `[]`, `authorized` callback, `pages`). Imported by `proxy.ts`. |
 | `src/auth.ts` | Full Auth.js config: Okta provider, `jwt` callback with refresh-token rotation, `session` callback that surfaces `accessToken`. |
-| `src/proxy.ts` | Next.js 16 proxy (ex-`middleware.ts`). Redirects unauthenticated traffic to `/login`. |
+| `src/proxy.ts` | Next.js 16 proxy (ex-`middleware.ts`). Redirects unauthenticated traffic to `/login`; `/login` and `/logged-out` are matcher-excluded. |
+| `src/app/login/page.tsx` | Auto-submits a server action on mount that calls `signIn("okta")`, so unauthenticated users land directly on Okta's hosted login (no interstitial UI). |
+| `src/app/logged-out/page.tsx` | Public "you've been signed out" page. Destination of local sign-out. |
 | `src/app/api/auth/[...nextauth]/route.ts` | Re-exports `handlers.{GET,POST}` for the OIDC callback endpoint. |
 | `src/lib/apollo/server.ts` | `registerApolloClient()` — per-request Apollo client for RSC. Custom `fetch` attaches the access token from `auth()`. |
 | `src/lib/apollo/client.tsx` | Client-side Apollo. Three-link chain: `authLink` attaches the Okta access token, `refreshLink` catches 401s and retries once after forcing a session refresh, `httpLink` posts to the Artemis endpoint. |
-| `src/components/providers.tsx` | Client wrapper: `SessionProvider` (with 5-minute polling + refetch-on-focus) + `ApolloWrapper`. |
+| `src/components/providers.tsx` | Client wrapper: `SessionProvider` (env-driven polling interval + refetch-on-focus) + `ApolloWrapper`. |
+| `src/components/sign-out-button.tsx` | Server-action form that calls `signOut({ redirectTo: "/logged-out" })` — local-only logout, Okta session untouched. |
 | `src/types/next-auth.d.ts` | Augments `Session` / `JWT` with `accessToken`, `refreshToken`, `expiresAt`, `error`. |
 
 ### Token refresh flow
@@ -132,7 +135,11 @@ Visit `http://localhost:3000`:
 `src/auth.ts`'s `jwt` callback runs on every request that reads the session:
 
 1. On initial sign-in Auth.js hands us the Okta `account` — we store
-   `access_token`, `refresh_token`, and `expires_at` on the JWT.
+   `access_token`, `refresh_token`, and `expires_at` on the JWT. If
+   `refresh_token` is missing we **throw** immediately; without it the
+   session will silently die at first expiry. A missing refresh token almost
+   always means the Okta app is missing the `Refresh Token` grant type or
+   `offline_access` was not in the granted scopes.
 2. On subsequent calls, if `Date.now() < expiresAt * 1000`, we return the
    token unchanged.
 3. Otherwise we POST to `{AUTH_OKTA_ISSUER}/oauth2/v1/token` with
@@ -150,14 +157,50 @@ which runs the `jwt` callback above.
 **Client-side queries** rely on two layers:
 
 1. `SessionProvider` in `src/components/providers.tsx` re-fetches
-   `/api/auth/session` every 5 minutes and whenever the tab regains focus.
-   Each refetch runs the `jwt` callback, so the token Apollo holds stays
-   fresh while the user is actively working.
+   `/api/auth/session` every 5 minutes (or `NEXT_PUBLIC_AUTH_DEBUG_TTL_SECONDS`
+   when set — see [Debug helpers](#debug-helpers)) and whenever the tab
+   regains focus. Each refetch runs the `jwt` callback, so the token Apollo
+   holds stays fresh while the user is actively working.
 2. If a request still goes out with a just-expired token and Artemis
    returns **401**, the `refreshLink` in `src/lib/apollo/client.tsx` forces
    a session refresh via `getSession()` and retries the operation **once**.
    A second 401 gives up — the session's `error` field surfaces to the
    home page so the user can re-authenticate.
+
+### Sign-out behavior
+
+Sign-out is **local-only** by design: clicking **Sign out** clears this
+app's session cookie and redirects to `/logged-out`. The user's **Okta
+session is untouched** — they remain signed in to Okta and to every other
+Okta-backed application.
+
+This matches the common corporate-SSO pattern (Salesforce, Slack Enterprise,
+etc.): "Sign out of App X" means App X, not everything the user has open
+via SSO. If the user navigates back into the app, Okta silently re-issues a
+code (SSO session still valid) and they're logged back in — same behavior
+as any other corporate tool.
+
+If you need **federated logout** instead (e.g. for a kiosk/shared-machine
+app), the change is: capture `id_token` in the `jwt` callback, and replace
+`sign-out-button.tsx` with a server action that calls
+`signOut({ redirect: false })` then `redirect()` to
+`{AUTH_OKTA_ISSUER}/oauth2/v1/logout?id_token_hint=…&post_logout_redirect_uri=…`.
+You'll also need to add the post-logout URL to Okta's **Sign-out redirect
+URIs**. Auth.js's default `redirect` callback drops cross-origin redirects,
+so use Next's `redirect()` rather than `signOut({ redirectTo })` for the
+Okta URL.
+
+### Debug helpers
+
+Two optional env vars for local development (leave unset in production):
+
+| Variable | Effect |
+| --- | --- |
+| `NEXT_PUBLIC_AUTH_DEBUG_TTL_SECONDS` | Overrides the access-token expiry **and** the client-side `SessionProvider` polling interval. e.g. set to `60` to watch a refresh every minute. |
+| `AUTH_DEBUG_LOG_TOKENS` | When `"true"`, logs fingerprinted (first 8 + last 8 chars) access + refresh tokens on initial sign-in and every refresh. Compare suffixes across cycles to confirm rotation. |
+
+Refresh *failures* always log via `console.error`, regardless of
+`AUTH_DEBUG_LOG_TOKENS` — they indicate a real problem worth surfacing.
 
 ---
 
@@ -183,6 +226,10 @@ which runs the `jwt` callback above.
 - `src/proxy.ts` only performs an **optimistic** redirect. The authoritative
   check lives in each protected RSC via `const session = await auth()`,
   matching the Next.js 16 authentication guide.
+- Sign-out is local-only — see [Sign-out behavior](#sign-out-behavior). The
+  user's Okta SSO session is intentionally left alive. If you flip this to
+  federated logout, audit which apps share the Okta session to ensure the
+  UX matches user expectations.
 
 ---
 
