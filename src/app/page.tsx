@@ -238,6 +238,23 @@ export default async function Home() {
         </CardContent>
       </Card>
 
+      {/* Card 6 — 401 refresh explainer (static) */}
+      <Card>
+        <CardHeader>
+          <CardTitle>6. 401 access-token refresh</CardTitle>
+          <CardDescription>
+            Handled automatically by the Apollo link chain — no UI wiring
+            needed. A 401 triggers <code>getSession()</code>, which runs
+            the Auth.js <code>jwt</code> callback (rotating the Okta{" "}
+            <code>access_token</code>), and the request is retried once
+            with the new token. See <code>src/lib/apollo/client.tsx</code>.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <CodeBlock>{REFRESH_LINK_SNIPPET}</CodeBlock>
+        </CardContent>
+      </Card>
+
       {/* Card 7 — Introspection rendered as SDL */}
       <Card>
         <CardHeader>
@@ -251,24 +268,6 @@ export default async function Home() {
         </CardHeader>
         <CardContent>
           <SchemaExplorer />
-        </CardContent>
-      </Card>
-
-      {/* Card 6 — 401 refresh explainer (static) */}
-      <Card>
-        <CardHeader>
-          <CardTitle>6. 401 access-token refresh</CardTitle>
-          <CardDescription>
-            Handled automatically by the Apollo link chain — no UI wiring
-            needed. A 401 triggers <code>getSession()</code>, which runs
-            the Auth.js <code>jwt</code> callback (rotating the Okta{" "}
-            <code>access_token</code>), and the request is retried once
-            with the new token. See{" "}
-            <code>src/lib/apollo/client.tsx</code> lines 47–68.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <CodeBlock>{REFRESH_LINK_SNIPPET}</CodeBlock>
         </CardContent>
       </Card>
     </main>

@@ -73,7 +73,6 @@ export const UPDATE_CALENDAR_URL_NOOP_MUTATION = gql`
   }
 `;
 
-// --- Card 7: introspection query, visualized with graphql-voyager ---
-// Standard GraphQL introspection — server-safe (graphql package is already a
-// dep). Voyager accepts this response shape directly.
+// --- Card 7: introspection query rendered as SDL via printSchema ---
+// Standard GraphQL introspection — graphql package is already a dep.
 export const INTROSPECTION_QUERY = gql(getIntrospectionQuery());

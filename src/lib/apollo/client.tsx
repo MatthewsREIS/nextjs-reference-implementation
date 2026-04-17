@@ -81,7 +81,10 @@ export function ApolloWrapper({ children }: { children: React.ReactNode }) {
   const { data } = useSession();
   // `ApolloNextAppProvider` only calls `makeClient` once, so we can't capture
   // the current access token by closure. A ref gives the link chain a stable
-  // handle to a value we update whenever the session rotates.
+  // handle to a value we update whenever the session rotates. (Writing to
+  // refs in render is disallowed by React Compiler, so we do it in an
+  // effect — children of `ApolloWrapper` mount after this effect runs, so
+  // the very first client query already sees the populated token.)
   const tokenRef = useRef<string | undefined>(undefined);
   useEffect(() => {
     tokenRef.current = data?.accessToken;

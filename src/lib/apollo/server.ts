@@ -9,7 +9,7 @@ import { auth } from "@/auth";
 // One ApolloClient per request in RSC, with the Okta access_token attached.
 // `registerApolloClient` ensures the same instance is reused within a single
 // request and a fresh one is built per request — required for token isolation.
-export const { getClient, query, PreloadQuery } = registerApolloClient(() => {
+export const { query, PreloadQuery } = registerApolloClient(() => {
   return new ApolloClient({
     cache: new InMemoryCache(),
     link: new HttpLink({

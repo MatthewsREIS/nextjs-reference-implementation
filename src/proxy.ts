@@ -9,6 +9,10 @@ const { auth } = NextAuth(authConfig);
 
 export default auth;
 
+// NOTE: Server Functions submitted from a matcher-excluded route also bypass
+// this proxy — Next.js routes them as POSTs to the host page. Authoritative
+// auth checks for sensitive actions must live in the action itself (or the
+// RSC that hosts the form), not here.
 export const config = {
   matcher: [
     "/((?!api/auth|_next/static|_next/image|favicon.ico|login|logged-out).*)",
