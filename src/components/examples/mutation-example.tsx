@@ -67,16 +67,22 @@ export function MutationExample() {
         </span>
       </p>
 
-      <Button
-        size="sm"
-        variant="outline"
-        disabled={!mounted || mutating || queryLoading}
-        onClick={() =>
-          runMutation({ variables: { calendarURL: current } })
-        }
-      >
-        {mutating ? "Saving…" : "Re-save (no-op)"}
-      </Button>
+      {/* base-ui's Button serializes `disabled` differently on the server
+          and client (SSR omits the attribute, CSR sets `disabled=""`),
+          causing a hydration warning. Deferring to a client-only render
+          avoids the mismatch. */}
+      {mounted && (
+        <Button
+          size="sm"
+          variant="outline"
+          disabled={mutating || queryLoading}
+          onClick={() =>
+            runMutation({ variables: { calendarURL: current } })
+          }
+        >
+          {mutating ? "Saving…" : "Re-save (no-op)"}
+        </Button>
+      )}
 
       {mutationError && (
         <pre className="text-sm text-destructive">
