@@ -14,7 +14,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Builder Base",
+  title: "Next.js Reference Implementation",
   description: "Reference Next.js app with Okta auth and GraphQL API access",
 };
 

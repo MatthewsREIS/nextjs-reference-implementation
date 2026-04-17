@@ -15,7 +15,7 @@ export default function LoggedOutPage() {
         <CardHeader>
           <CardTitle>Signed out</CardTitle>
           <CardDescription>
-            You've been signed out of Builder Base. Your Okta session is
+            You've been signed out of this app. Your Okta session is
             unaffected.
           </CardDescription>
         </CardHeader>
