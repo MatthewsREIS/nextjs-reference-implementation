@@ -62,21 +62,20 @@ export const SEARCH_PROPOSALS_QUERY = gql`
 `;
 
 // --- Card 5: read current value + no-op mutation ---
-// The mutation writes the value back unchanged.
-export const WEEKLY_CALL_COMMITMENT_QUERY = gql`
-  query WeeklyCallCommitment {
+// Uses `calendarURL` (nullable String) so the demo works even when the field
+// is unset — we just write the current value (possibly null) back unchanged.
+export const CALENDAR_URL_QUERY = gql`
+  query CalendarUrl {
     UserSettings {
-      weeklyCallCommitment
+      calendarURL
     }
   }
 `;
 
-export const UPDATE_COMMITMENTS_NOOP_MUTATION = gql`
-  mutation UpdateCommitmentsNoOp($weeklyCallCommitment: Int!) {
-    UpdateUserSettings(
-      input: { weeklyCallCommitment: $weeklyCallCommitment }
-    ) {
-      weeklyCallCommitment
+export const UPDATE_CALENDAR_URL_NOOP_MUTATION = gql`
+  mutation UpdateCalendarUrlNoOp($calendarURL: String) {
+    UpdateUserSettings(input: { calendarURL: $calendarURL }) {
+      calendarURL
     }
   }
 `;

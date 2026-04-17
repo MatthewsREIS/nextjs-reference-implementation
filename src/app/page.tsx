@@ -61,6 +61,21 @@ export default async function Home() {
     query: NOTIFICATIONS_COUNT_QUERY,
   }).catch((err: unknown) => ({ data: null, error: err }));
 
+  // PreloadQuery can't be wrapped in try/catch at the JSX level. Warm the
+  // server-side cache for card 4 first; if that fetch throws (e.g. a 401
+  // because the RSC Apollo client has no refresh link), fall back to a
+  // client-only useSuspenseQuery that will refresh the Okta token via
+  // the client-side refreshLink and retry.
+  let preloadedOk = true;
+  try {
+    await query({
+      query: RECENT_NOTIFICATIONS_QUERY,
+      variables: SUSPENSE_VARS,
+    });
+  } catch {
+    preloadedOk = false;
+  }
+
   return (
     <main className="mx-auto w-full max-w-3xl space-y-6 p-6">
       <div className="flex items-center justify-between">
@@ -163,10 +178,20 @@ export default async function Home() {
           <CodeBlock label="Query">
             {print(RECENT_NOTIFICATIONS_QUERY)}
           </CodeBlock>
-          <PreloadQuery
-            query={RECENT_NOTIFICATIONS_QUERY}
-            variables={SUSPENSE_VARS}
-          >
+          {preloadedOk ? (
+            <PreloadQuery
+              query={RECENT_NOTIFICATIONS_QUERY}
+              variables={SUSPENSE_VARS}
+            >
+              <Suspense
+                fallback={
+                  <p className="text-sm text-muted-foreground">Loading…</p>
+                }
+              >
+                <SuspenseExample />
+              </Suspense>
+            </PreloadQuery>
+          ) : (
             <Suspense
               fallback={
                 <p className="text-sm text-muted-foreground">Loading…</p>
@@ -174,7 +199,7 @@ export default async function Home() {
             >
               <SuspenseExample />
             </Suspense>
-          </PreloadQuery>
+          )}
         </CardContent>
       </Card>
 

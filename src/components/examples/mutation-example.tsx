@@ -5,16 +5,16 @@ import { print } from "graphql";
 import { Button } from "@/components/ui/button";
 import { CodeBlock } from "@/components/code-block";
 import {
-  UPDATE_COMMITMENTS_NOOP_MUTATION,
-  WEEKLY_CALL_COMMITMENT_QUERY,
+  CALENDAR_URL_QUERY,
+  UPDATE_CALENDAR_URL_NOOP_MUTATION,
 } from "@/graphql/examples";
 
-type ViewerData = {
-  UserSettings: { weeklyCallCommitment: number | null } | null;
+type SettingsData = {
+  UserSettings: { calendarURL: string | null } | null;
 };
 
 type MutationResult = {
-  UpdateUserSettings: { weeklyCallCommitment: number | null };
+  UpdateUserSettings: { calendarURL: string | null };
 };
 
 export function MutationExample() {
@@ -22,49 +22,48 @@ export function MutationExample() {
     data,
     loading: queryLoading,
     error: queryError,
-  } = useQuery<ViewerData>(WEEKLY_CALL_COMMITMENT_QUERY);
+  } = useQuery<SettingsData>(CALENDAR_URL_QUERY);
 
   const [
     runMutation,
     { loading: mutating, error: mutationError, data: mutationData },
-  ] = useMutation<MutationResult>(UPDATE_COMMITMENTS_NOOP_MUTATION);
+  ] = useMutation<MutationResult>(UPDATE_CALENDAR_URL_NOOP_MUTATION);
 
-  const current = data?.UserSettings?.weeklyCallCommitment ?? null;
+  const current = data?.UserSettings?.calendarURL ?? null;
 
   return (
     <div className="space-y-3">
       <CodeBlock label="Mutation">
-        {print(UPDATE_COMMITMENTS_NOOP_MUTATION)}
+        {print(UPDATE_CALENDAR_URL_NOOP_MUTATION)}
       </CodeBlock>
 
       {queryError && (
         <pre className="text-sm text-destructive">{queryError.message}</pre>
       )}
 
-      {mutationData && (
-        <CodeBlock label="Response">
-          {JSON.stringify(mutationData, null, 2)}
-        </CodeBlock>
-      )}
+      <CodeBlock label="Response">
+        {mutationData
+          ? JSON.stringify(mutationData, null, 2)
+          : "// Click “Re-save (no-op)” to run the mutation."}
+      </CodeBlock>
 
       <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
         Rendered
       </p>
 
       <p className="text-sm">
-        Current <code>weeklyCallCommitment</code>:{" "}
+        Current <code>calendarURL</code>:{" "}
         <span className="font-mono">
-          {queryLoading ? "loading…" : String(current)}
+          {queryLoading ? "loading…" : JSON.stringify(current)}
         </span>
       </p>
 
       <Button
         size="sm"
         variant="outline"
-        disabled={mutating || current === null}
+        disabled={mutating || queryLoading}
         onClick={() =>
-          current !== null &&
-          runMutation({ variables: { weeklyCallCommitment: current } })
+          runMutation({ variables: { calendarURL: current } })
         }
       >
         {mutating ? "Saving…" : "Re-save (no-op)"}
@@ -80,7 +79,9 @@ export function MutationExample() {
         <p className="text-sm text-muted-foreground">
           Server returned:{" "}
           <span className="font-mono">
-            {String(mutationData.UpdateUserSettings?.weeklyCallCommitment)}
+            {JSON.stringify(
+              mutationData.UpdateUserSettings?.calendarURL,
+            )}
           </span>
         </p>
       )}
