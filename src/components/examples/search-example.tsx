@@ -76,6 +76,10 @@ export function SearchExample() {
           )}
         </ul>
       )}
+
+      {!skip && data && (
+        <CodeBlock>{JSON.stringify(data, null, 2)}</CodeBlock>
+      )}
     </div>
   );
 }

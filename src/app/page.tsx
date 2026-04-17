@@ -98,12 +98,15 @@ export default async function Home() {
                 : String(countError)}
             </pre>
           ) : (
-            <p className="text-sm">
-              Unread notifications:{" "}
-              <span className="font-mono">
-                {countData?.notifications?.totalCount ?? "—"}
-              </span>
-            </p>
+            <>
+              <p className="text-sm">
+                Unread notifications:{" "}
+                <span className="font-mono">
+                  {countData?.notifications?.totalCount ?? "—"}
+                </span>
+              </p>
+              <CodeBlock>{JSON.stringify(countData, null, 2)}</CodeBlock>
+            </>
           )}
         </CardContent>
       </Card>

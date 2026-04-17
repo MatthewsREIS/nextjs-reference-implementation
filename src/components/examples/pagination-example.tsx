@@ -81,6 +81,8 @@ export function PaginationExample() {
           Load more
         </Button>
       )}
+
+      {data && <CodeBlock>{JSON.stringify(data, null, 2)}</CodeBlock>}
     </div>
   );
 }

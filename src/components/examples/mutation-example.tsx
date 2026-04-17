@@ -65,12 +65,15 @@ export function MutationExample() {
       )}
 
       {mutationData && (
-        <p className="text-sm text-muted-foreground">
-          Server returned:{" "}
-          <span className="font-mono">
-            {String(mutationData.UpdateUserSettings?.weeklyCallCommitment)}
-          </span>
-        </p>
+        <>
+          <p className="text-sm text-muted-foreground">
+            Server returned:{" "}
+            <span className="font-mono">
+              {String(mutationData.UpdateUserSettings?.weeklyCallCommitment)}
+            </span>
+          </p>
+          <CodeBlock>{JSON.stringify(mutationData, null, 2)}</CodeBlock>
+        </>
       )}
     </div>
   );
