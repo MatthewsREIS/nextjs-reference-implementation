@@ -14,6 +14,7 @@ import {
   SuspenseExample,
   SUSPENSE_VARS,
 } from "@/components/examples/suspense-example";
+import { SuspenseExampleCsr } from "@/components/examples/suspense-example-csr";
 import { MutationExample } from "@/components/examples/mutation-example";
 import {
   Card,
@@ -192,13 +193,7 @@ export default async function Home() {
               </Suspense>
             </PreloadQuery>
           ) : (
-            <Suspense
-              fallback={
-                <p className="text-sm text-muted-foreground">Loading…</p>
-              }
-            >
-              <SuspenseExample />
-            </Suspense>
+            <SuspenseExampleCsr />
           )}
         </CardContent>
       </Card>
