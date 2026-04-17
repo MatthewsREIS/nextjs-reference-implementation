@@ -96,6 +96,24 @@ export default async function Home() {
         </Card>
       )}
 
+      <Card>
+        <CardHeader>
+          <CardTitle>About these examples</CardTitle>
+          <CardDescription>
+            Each card below is a working reference for a common GraphQL
+            pattern on this stack (Apollo Client 4 + Next.js App Router +
+            Okta-backed bearer auth). For every card you get the{" "}
+            <strong>query</strong> (or mutation) exactly as it&rsquo;s sent
+            to Artemis, the <strong>response</strong> returned by the
+            server, and a small <strong>rendered</strong> UI that consumes
+            the data. Source for each example lives under{" "}
+            <code>src/graphql/examples.ts</code> and{" "}
+            <code>src/components/examples/</code>; copy buttons on every
+            snippet make it easy to paste patterns into your own code.
+          </CardDescription>
+        </CardHeader>
+      </Card>
+
       {/* Card 1 — RSC scalar query */}
       <Card>
         <CardHeader>
