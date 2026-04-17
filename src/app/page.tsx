@@ -104,7 +104,7 @@ export default async function Home() {
             pattern on this stack (Apollo Client 4 + Next.js App Router +
             Okta-backed bearer auth). For every card you get the{" "}
             <strong>query</strong> (or mutation) exactly as it&rsquo;s sent
-            to Artemis, the <strong>response</strong> returned by the
+            to the API, the <strong>response</strong> returned by the
             server, and a small <strong>rendered</strong> UI that consumes
             the data. Source for each example lives under{" "}
             <code>src/graphql/examples.ts</code> and{" "}
@@ -112,7 +112,7 @@ export default async function Home() {
             snippet make it easy to paste patterns into your own code.
             <br />
             <br />
-            Artemis&rsquo; public docs don&rsquo;t expose a schema
+            The API&rsquo;s public docs don&rsquo;t expose a schema
             reference, and the GraphQL endpoint is behind Okta — so the{" "}
             <strong>schema introspection</strong> card (7) is the easiest
             way to browse every type and field available. It runs the
@@ -243,7 +243,7 @@ export default async function Home() {
         <CardHeader>
           <CardTitle>7. Schema introspection</CardTitle>
           <CardDescription>
-            Runs the standard introspection query against Artemis, rebuilds
+            Runs the standard introspection query against the API, rebuilds
             a <code>GraphQLSchema</code> via <code>buildClientSchema</code>,
             and prints it as SDL with <code>printSchema</code>. Both
             helpers come from the <code>graphql</code> package.

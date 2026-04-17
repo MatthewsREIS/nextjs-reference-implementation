@@ -2,7 +2,7 @@
 
 A reference implementation for internal builders: a Next.js App Router app that
 authenticates users against Okta via OIDC, gates every route behind that
-session, and calls the Artemis GraphQL API via Apollo Client using the user's
+session, and calls the GraphQL API via Apollo Client using the user's
 Okta access token. Built with:
 
 - **Next.js 16** (App Router, TypeScript, Turbopack, Tailwind v4)
@@ -37,7 +37,7 @@ Okta access token. Built with:
                                         └─ Bearer = session.accessToken
                                               │
                                               ▼
-                                   ARTEMIS_GRAPHQL_URL
+                                   GRAPHQL_API_URL
 
   OIDC callback     src/app/api/auth/[...nextauth]/route.ts
                     (exports NextAuth handlers)
@@ -52,7 +52,7 @@ Okta access token. Built with:
 
 - **bun** ≥ 1.2 (`curl -fsSL https://bun.sh/install | bash`)
 - Access to an Okta org with permission to create OIDC applications
-- A reachable Artemis GraphQL endpoint (optional for first boot)
+- A reachable GraphQL API endpoint (optional for first boot)
 
 ---
 
@@ -107,9 +107,9 @@ Visit `http://localhost:3000`:
 
 1. You are redirected to `/login` because `src/proxy.ts` has no session.
 2. Click **Sign in with Okta** — Okta hosted login appears.
-3. After consent you land on `/` with a greeting and the sample Artemis query
+3. After consent you land on `/` with a greeting and the sample API query
    result.
-4. Open DevTools → Network → `ARTEMIS_GRAPHQL_URL` request: the
+4. Open DevTools → Network → `GRAPHQL_API_URL` request: the
    `Authorization: Bearer …` header carries the Okta access token.
 
 ---
@@ -125,7 +125,7 @@ Visit `http://localhost:3000`:
 | `src/app/logged-out/page.tsx` | Public "you've been signed out" page. Destination of local sign-out. |
 | `src/app/api/auth/[...nextauth]/route.ts` | Re-exports `handlers.{GET,POST}` for the OIDC callback endpoint. |
 | `src/lib/apollo/server.ts` | `registerApolloClient()` — per-request Apollo client for RSC. Custom `fetch` attaches the access token from `auth()`. |
-| `src/lib/apollo/client.tsx` | Client-side Apollo. Three-link chain: `authLink` attaches the Okta access token, `refreshLink` catches 401s and retries once after forcing a session refresh, `httpLink` posts to the Artemis endpoint. |
+| `src/lib/apollo/client.tsx` | Client-side Apollo. Three-link chain: `authLink` attaches the Okta access token, `refreshLink` catches 401s and retries once after forcing a session refresh, `httpLink` posts to the API endpoint. |
 | `src/components/providers.tsx` | Client wrapper: `SessionProvider` (env-driven polling interval + refetch-on-focus) + `ApolloWrapper`. |
 | `src/components/sign-out-button.tsx` | Server-action form that calls `signOut({ redirectTo: "/logged-out" })` — local-only logout, Okta session untouched. |
 | `src/types/next-auth.d.ts` | Augments `Session` / `JWT` with `accessToken`, `refreshToken`, `expiresAt`, `error`. |
@@ -161,7 +161,7 @@ which runs the `jwt` callback above.
    when set — see [Debug helpers](#debug-helpers)) and whenever the tab
    regains focus. Each refetch runs the `jwt` callback, so the token Apollo
    holds stays fresh while the user is actively working.
-2. If a request still goes out with a just-expired token and Artemis
+2. If a request still goes out with a just-expired token and the API
    returns **401**, the `refreshLink` in `src/lib/apollo/client.tsx` forces
    a session refresh via `getSession()` and retries the operation **once**.
    A second 401 gives up — the session's `error` field surfaces to the
@@ -210,8 +210,8 @@ Refresh *failures* always log via `console.error`, regardless of
 - Set `AUTH_TRUST_HOST=true` unless deploying to Vercel.
 - Add the deployed callback URL to your Okta app's **Sign-in redirect URIs**.
 - Rotate `AUTH_SECRET` per environment and store it in your secret manager.
-- `ARTEMIS_GRAPHQL_URL` stays server-side. Only use
-  `NEXT_PUBLIC_ARTEMIS_GRAPHQL_URL` if the endpoint is intended to be
+- `GRAPHQL_API_URL` stays server-side. Only use
+  `NEXT_PUBLIC_GRAPHQL_API_URL` if the endpoint is intended to be
   reachable from the browser.
 
 ---

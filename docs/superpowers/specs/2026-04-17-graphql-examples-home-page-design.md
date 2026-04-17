@@ -9,7 +9,7 @@ queries in RSC, client-side queries with pagination and filtering, the
 auth-refresh behavior.
 
 Every example displays its source (the exact `gql` document being executed)
-alongside the live result fetched from the real Artemis endpoint configured
+alongside the live result fetched from the real API endpoint configured
 in `.env.local`.
 
 ## Goals
@@ -159,7 +159,7 @@ current value, a button "Re-save (no-op)", and the mutation result / loading
 ### 6. 401 refresh explainer (no live demo)
 
 Static card. Shows a snippet of the `refreshLink` block from
-`src/lib/apollo/client.tsx:47-68` and explains: a 401 from Artemis triggers
+`src/lib/apollo/client.tsx:47-68` and explains: a 401 from the API triggers
 `getSession()` (which runs the Auth.js `jwt` callback → rotates the Okta
 `access_token`), the retry is attempted once with the new token, and a
 second 401 bubbles as a normal error with `RefreshAccessTokenError` on the
@@ -204,7 +204,7 @@ Deleted:
 ## Risks
 
 - **Schema drift.** The example queries assume the field shapes observed in
-  `../worktrees/main/react-ui/src/graphql/`. If Artemis differs (e.g.
+  `../worktrees/main/react-ui/src/graphql/`. If the API differs (e.g.
   `viewer` is called `me`), we adjust during first live run.
 - **Empty data.** If the user has zero notifications and no matching
   proposals, the cards render empty states. Each card must handle this

@@ -4,7 +4,7 @@
 
 **Goal:** Replace the home page's single placeholder query with six reference cards that demonstrate the core GraphQL patterns on this stack: RSC query, client pagination, search with edge filtering, `PreloadQuery` handoff, a no-op mutation, and a static 401-refresh explainer.
 
-**Architecture:** Each card shows its `gql` source (via `print(DocumentNode)`) next to live output from the Artemis endpoint. Server-side examples live in `src/app/page.tsx`; interactive ones are `"use client"` components under `src/components/examples/`. All queries and the mutation live in `src/graphql/examples.ts`.
+**Architecture:** Each card shows its `gql` source (via `print(DocumentNode)`) next to live output from the API endpoint. Server-side examples live in `src/app/page.tsx`; interactive ones are `"use client"` components under `src/components/examples/`. All queries and the mutation live in `src/graphql/examples.ts`.
 
 **Tech Stack:** Next.js 16 App Router, Apollo Client 4 (`@apollo/client`, `@apollo/client-integration-nextjs`), shadcn/Card, Tailwind, `graphql.print` for source rendering.
 
@@ -734,7 +734,7 @@ git commit -m "feat: compose six GraphQL reference cards on the home page"
 ## Task 7: Browser verification and schema-drift fixes
 
 **Files:**
-- May modify: `src/graphql/examples.ts` and/or client components if the live Artemis schema differs from the assumed shape.
+- May modify: `src/graphql/examples.ts` and/or client components if the live API schema differs from the assumed shape.
 
 - [ ] **Step 1: Start the dev server**
 
@@ -788,7 +788,7 @@ If Step 4 required changes:
 
 ```bash
 git add src/graphql/examples.ts src/components/examples/
-git commit -m "fix: align example queries with live Artemis schema"
+git commit -m "fix: align example queries with live API schema"
 ```
 
 If no drift fixes needed, skip this commit.

@@ -11,7 +11,7 @@
  *                     operation ONCE. A second 401 bubbles up as a normal
  *                     error; the `RefreshAccessTokenError` flag on the session
  *                     will surface to the UI.
- *   3. httpLink     — plain POST to the Artemis GraphQL endpoint.
+ *   3. httpLink     — plain POST to the GraphQL API endpoint.
  *
  * Server-side (RSC) Apollo lives in ./server.ts and does not need this —
  * `auth()` already triggers a refresh check on every RSC request.
@@ -68,7 +68,7 @@ function makeClient(tokenRef: TokenRef) {
   });
 
   const httpLink = new HttpLink({
-    uri: process.env.NEXT_PUBLIC_ARTEMIS_GRAPHQL_URL,
+    uri: process.env.NEXT_PUBLIC_GRAPHQL_API_URL,
   });
 
   return new ApolloClient({

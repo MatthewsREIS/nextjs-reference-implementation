@@ -15,7 +15,7 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "Builder Base",
-  description: "Reference Next.js app with Okta auth and Artemis GraphQL access",
+  description: "Reference Next.js app with Okta auth and GraphQL API access",
 };
 
 export default function RootLayout({

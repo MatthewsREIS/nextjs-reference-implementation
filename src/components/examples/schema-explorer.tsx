@@ -1,6 +1,6 @@
 "use client";
 
-// Renders the Artemis schema as SDL (Schema Definition Language) by running
+// Renders the API schema as SDL (Schema Definition Language) by running
 // the standard introspection query, reconstructing a GraphQLSchema via
 // `buildClientSchema`, and printing it with `printSchema`. Both helpers ship
 // with the `graphql` package that Apollo already depends on, so no extra
