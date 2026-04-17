@@ -19,6 +19,8 @@ jobs:
 
       - run: bun run lint
 
+      - run: bun run test
+
       - run: bun run build
         env:
           GRAPHQL_API_URL: https://example.com/graphql

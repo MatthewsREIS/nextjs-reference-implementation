@@ -241,3 +241,15 @@ Refresh *failures* always log via `console.error`, regardless of
 | `bun run build` | Production build (runs typecheck + lint) |
 | `bun start` | Serve the production build |
 | `bun run lint` | Run ESLint |
+| `bun run test` | Run the Vitest unit suite |
+| `bun run test:watch` | Run Vitest in watch mode for local development |
+
+---
+
+## Testing
+
+`bun run test` runs the Vitest unit suite; use `bun run test:watch` while
+iterating locally. Scope is intentionally limited to pure, synchronous
+modules (`src/lib/use-mounted.ts`, `src/lib/utils.ts`) — async Server
+Components are out of scope for Vitest per the Next.js guidance, and E2E
+coverage is out of scope for this reference app.
