@@ -7,11 +7,11 @@
 // RSC tree. This component `skip`s the query until after mount, so the
 // first fetch runs purely client-side where the refreshLink can handle auth.
 
-import { useEffect, useState } from "react";
 import { useQuery } from "@apollo/client/react";
 import { CodeBlock } from "@/components/code-block";
 import { RECENT_NOTIFICATIONS_QUERY } from "@/graphql/examples";
 import { SUSPENSE_VARS } from "@/components/examples/suspense-example";
+import { useMounted } from "@/lib/use-mounted";
 
 type NotificationsData = {
   notifications: {
@@ -20,8 +20,7 @@ type NotificationsData = {
 };
 
 export function SuspenseExampleCsr() {
-  const [mounted, setMounted] = useState(false);
-  useEffect(() => setMounted(true), []);
+  const mounted = useMounted();
 
   const { data, loading, error } = useQuery<NotificationsData>(
     RECENT_NOTIFICATIONS_QUERY,

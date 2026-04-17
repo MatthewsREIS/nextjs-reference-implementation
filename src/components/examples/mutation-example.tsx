@@ -1,6 +1,5 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import { useMutation, useQuery } from "@apollo/client/react";
 import { print } from "graphql";
 import { Button } from "@/components/ui/button";
@@ -9,6 +8,7 @@ import {
   CALENDAR_URL_QUERY,
   UPDATE_CALENDAR_URL_NOOP_MUTATION,
 } from "@/graphql/examples";
+import { useMounted } from "@/lib/use-mounted";
 
 type SettingsData = {
   UserSettings: { calendarURL: string | null } | null;
@@ -19,11 +19,9 @@ type MutationResult = {
 };
 
 export function MutationExample() {
-  // Gate to avoid hydration mismatch: SSR renders before useQuery resolves,
-  // client renders after it's fired. The `disabled` prop would otherwise
-  // differ between the two passes.
-  const [mounted, setMounted] = useState(false);
-  useEffect(() => setMounted(true), []);
+  // base-ui's Button serializes `disabled` differently on the server and
+  // client, so defer the button itself to a post-hydration pass.
+  const mounted = useMounted();
 
   const {
     data,
@@ -67,10 +65,6 @@ export function MutationExample() {
         </span>
       </p>
 
-      {/* base-ui's Button serializes `disabled` differently on the server
-          and client (SSR omits the attribute, CSR sets `disabled=""`),
-          causing a hydration warning. Deferring to a client-only render
-          avoids the mismatch. */}
       {mounted && (
         <Button
           size="sm"

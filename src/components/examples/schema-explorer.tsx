@@ -7,7 +7,7 @@
 // runtime is needed. Gated on `mounted` so the fetch only runs client-side
 // where the Apollo refresh link can handle 401s.
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo } from "react";
 import { useQuery } from "@apollo/client/react";
 import {
   buildClientSchema,
@@ -16,10 +16,10 @@ import {
 } from "graphql";
 import { CodeBlock } from "@/components/code-block";
 import { INTROSPECTION_QUERY } from "@/graphql/examples";
+import { useMounted } from "@/lib/use-mounted";
 
 export function SchemaExplorer() {
-  const [mounted, setMounted] = useState(false);
-  useEffect(() => setMounted(true), []);
+  const mounted = useMounted();
 
   const { data, loading, error } = useQuery<IntrospectionQuery>(
     INTROSPECTION_QUERY,

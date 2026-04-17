@@ -1,0 +1,29 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  CI:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - run: bun install --frozen-lockfile
+
+      - run: bun run lint
+
+      - run: bun run build
+        env:
+          GRAPHQL_API_URL: https://example.com/graphql
+          NEXT_PUBLIC_GRAPHQL_API_URL: https://example.com/graphql
+          AUTH_SECRET: ci-placeholder-secret
+          AUTH_TRUST_HOST: "true"
+          AUTH_OKTA_ID: ci-placeholder-id
+          AUTH_OKTA_ISSUER: https://example.okta.com
