@@ -31,6 +31,9 @@ yarn-error.log*
 # vercel
 .vercel
 
+# agent tooling (Claude Code local settings, scratch dirs)
+.claude/
+
 # typescript
 *.tsbuildinfo
 next-env.d.ts
