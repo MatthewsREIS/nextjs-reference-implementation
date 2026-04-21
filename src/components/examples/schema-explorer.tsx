@@ -4,8 +4,13 @@
 // the standard introspection query, reconstructing a GraphQLSchema via
 // `buildClientSchema`, and printing it with `printSchema`. Both helpers ship
 // with the `graphql` package that Apollo already depends on, so no extra
-// runtime is needed. Gated on `mounted` so the fetch only runs client-side
-// where the Apollo refresh link can handle 401s.
+// runtime is needed.
+//
+// `skip: !mounted` defers the fetch to the client so an expired access token
+// is recovered by the client Apollo refreshLink (the RSC Apollo client has no
+// refreshLink, so a 401 there would crash the page). With the session
+// pre-populated into SessionProvider at the root layout, the client token is
+// ready on first render — the gate costs one extra render, not a round-trip.
 
 import { useMemo } from "react";
 import { useQuery } from "@apollo/client/react";

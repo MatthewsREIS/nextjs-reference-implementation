@@ -1,11 +1,11 @@
 "use client";
 
-// Client-only fallback used by the home page when the server-side
-// PreloadQuery 401s. During SSR the Apollo client in `client.tsx` has no
-// access token (the ref is populated in a useEffect that doesn't run on the
-// server), so a suspense-style fetch during SSR always 401s and crashes the
-// RSC tree. This component `skip`s the query until after mount, so the
-// first fetch runs purely client-side where the refreshLink can handle auth.
+// Client-only fallback used by Card 4 when the server-side PreloadQuery 401s
+// (e.g. the RSC Apollo client's access token expired between render and
+// dispatch; the RSC transport has no refreshLink). Deferring the fetch until
+// after mount routes it through the *client* Apollo client, which has a
+// refreshLink that can rotate the Okta token via getSession() and retry.
+// This is a deliberate CSR-only execution path, not a hydration workaround.
 
 import { useQuery } from "@apollo/client/react";
 import { CodeBlock } from "@/components/code-block";

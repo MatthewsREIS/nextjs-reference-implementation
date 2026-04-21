@@ -19,8 +19,11 @@ type MutationResult = {
 };
 
 export function MutationExample() {
-  // base-ui's Button serializes `disabled` differently on the server and
-  // client, so defer the button itself to a post-hydration pass.
+  // `mounted` here is NOT for the query (the query runs normally server- and
+  // client-side). It gates base-ui's <Button disabled={…}> because the lib
+  // serializes the attribute differently across SSR and CSR, which would
+  // otherwise show up as a hydration mismatch warning. Rendering the button
+  // post-mount sidesteps the divergence. See commit 0fa86c5.
   const mounted = useMounted();
 
   const {
