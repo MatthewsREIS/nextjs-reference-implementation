@@ -8,10 +8,13 @@ export default {
   pages: { signIn: "/login" },
   callbacks: {
     authorized({ auth, request: { nextUrl } }) {
-      const isLoggedIn = !!auth?.user;
       const isOnLogin = nextUrl.pathname.startsWith("/login");
       if (isOnLogin) return true;
-      return isLoggedIn;
+      // A session whose refresh token can never be recovered is effectively
+      // dead — bounce to /login so the user re-authenticates cleanly instead
+      // of lingering in a half-broken state where every API call 401s.
+      if (auth?.error === "NoRefreshToken") return false;
+      return !!auth?.user;
     },
   },
 } satisfies NextAuthConfig;
