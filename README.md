@@ -25,26 +25,57 @@ access token. Built with:
                           │ session cookie
                           ▼
 ┌────────────────────────────────────────────┐
-│ Next.js — src/proxy.ts (Auth.js gate)      │
+│ Next.js — src/proxy.ts (edge gate)         │
 │   unauthenticated → /login                 │
 └────────────────────┬───────────────────────┘
                      │
-        ┌────────────┴────────────┐
-        ▼                         ▼
-  src/app/login            src/app/page.tsx (RSC)
-  (Sign in w/ Okta)        ├─ auth()  → session
-                           └─ query() → Apollo RSC client
-                                        └─ Bearer = session.accessToken
-                                              │
-                                              ▼
-                                   GRAPHQL_API_URL
+                     ▼
+       ┌──────────────────────────────┐
+       │ <MatthewsGraphqlProvider>    │  in src/app/layout.tsx
+       │   reads session via auth()   │
+       │   ├─ SessionProvider         │  next-auth/react
+       │   └─ Apollo link chain       │  authLink + refreshLink + httpLink
+       └──────────────┬───────────────┘
+                      │
+     ┌────────────────┴─────────────────┐
+     ▼                                  ▼
+  Server Components              Client Components
+  query(), PreloadQuery()        useQuery, useMutation,
+  from .../server                useSuspenseQuery
+     │                                  │
+     └─────────────┬────────────────────┘
+                   ▼
+         Bearer = session.accessToken
+                   │
+                   ▼
+           GRAPHQL_API_URL
 
-  OIDC callback     src/app/api/auth/[...nextauth]/route.ts
-                    (exports NextAuth handlers)
-
-  Token refresh     src/auth.ts jwt() callback hits
-                    {AUTH_OKTA_ISSUER}/oauth2/v1/token when expired
+  All wired in: src/lib/matthews-graphql/
 ```
+
+Everything auth- and GraphQL-related lives in `src/lib/matthews-graphql/`. The six files outside that directory you might touch are:
+
+| File | What you write |
+| --- | --- |
+| `src/app/layout.tsx` | `<MatthewsGraphqlProvider>{children}</MatthewsGraphqlProvider>` |
+| `src/app/api/auth/[...nextauth]/route.ts` | `export { GET, POST } from "@/lib/matthews-graphql/route"` |
+| `src/proxy.ts` | 3-line wrapper: import the handler as `proxy`, inline the `config.matcher` literal (Next.js 16 requires it) |
+| Any RSC | `import { query, PreloadQuery, auth } from "@/lib/matthews-graphql/server"` |
+| Any client component | `useQuery`/`useMutation` from `@apollo/client/react`, `useSession` from `next-auth/react` |
+| `src/components/sign-out-button.tsx` / `src/app/login/page.tsx` | `signIn`/`signOut` from `@/lib/matthews-graphql/server` |
+
+---
+
+## Building pages and components
+
+Add a route under `src/app/**`. Anything rendered under the root layout is
+already inside `<MatthewsGraphqlProvider>`:
+
+- **Server Components**: `import { query, PreloadQuery, auth } from "@/lib/matthews-graphql/server"` and call them directly. The Okta access token is attached to every GraphQL request.
+- **Client Components**: `useQuery`, `useMutation`, `useSuspenseQuery` from `@apollo/client/react` and `useSession` from `next-auth/react`. The provider already wires them up.
+- **Token refresh, 401 retry, concurrent-refresh dedup, and idle polling** are already handled inside the package. Don't re-implement them.
+
+Don't instantiate `ApolloClient`, don't wrap your tree in `SessionProvider`, don't write custom refresh logic. If something you need isn't covered, that's a signal the package needs to change — not a reason to bypass it.
 
 ---
 
@@ -97,19 +128,28 @@ Visit `http://localhost:3000`:
 
 ## How the pieces connect
 
+Everything lives in `src/lib/matthews-graphql/`. Four public entry points:
+
+| Subpath import | What it gives you |
+| --- | --- |
+| `@/lib/matthews-graphql` | `MatthewsGraphqlProvider` — the async RSC you drop into `layout.tsx` |
+| `@/lib/matthews-graphql/server` | RSC Apollo (`query`, `PreloadQuery`), Auth.js runtime (`auth`, `handlers`, `signIn`, `signOut`) |
+| `@/lib/matthews-graphql/route` | `GET`, `POST` for `src/app/api/auth/[...nextauth]/route.ts` |
+| `@/lib/matthews-graphql/proxy` | Edge-safe auth handler — imported by `src/proxy.ts`, which inlines `config.matcher` (Next.js 16 static-analysis requirement) |
+
+Internal files (you do not import these directly):
+
 | File | Responsibility |
 | --- | --- |
-| `src/auth.config.ts` | Edge-safe Auth.js config (providers `[]`, `authorized` callback, `pages`). Imported by `proxy.ts`. |
-| `src/auth.ts` | Full Auth.js config: Okta provider, `jwt` callback with refresh-token rotation, `session` callback that surfaces `accessToken`. |
-| `src/proxy.ts` | Next.js 16 proxy (ex-`middleware.ts`). Redirects unauthenticated traffic to `/login`; `/login` and `/logged-out` are matcher-excluded. |
-| `src/app/login/page.tsx` | Auto-submits a server action on mount that calls `signIn("okta")`, so unauthenticated users land directly on Okta's hosted login (no interstitial UI). |
-| `src/app/logged-out/page.tsx` | Public "you've been signed out" page. Destination of local sign-out. |
-| `src/app/api/auth/[...nextauth]/route.ts` | Re-exports `handlers.{GET,POST}` for the OIDC callback endpoint. |
-| `src/lib/apollo/server.ts` | `registerApolloClient()` — per-request Apollo client for RSC. Custom `fetch` attaches the access token from `auth()`. |
-| `src/lib/apollo/client.tsx` | Client-side Apollo. Three-link chain: `authLink` attaches the Okta access token, `refreshLink` catches 401s and retries once after forcing a session refresh, `httpLink` posts to the API endpoint. |
-| `src/components/providers.tsx` | Client wrapper: `SessionProvider` (seeded with the server-fetched session, env-driven polling interval, refetch-on-focus) + `ApolloWrapper`. |
-| `src/components/sign-out-button.tsx` | Server-action form that calls `signOut({ redirectTo: "/logged-out" })` — local-only logout, Okta session untouched. |
-| `src/types/next-auth.d.ts` | Augments `Session` / `JWT` with `accessToken`, `refreshToken`, `expiresAt`, `error`. |
+| `provider.tsx` | Async RSC; calls `auth()` and forwards session to the client wrapper |
+| `provider-client.tsx` | `"use client"`; wraps SessionProvider + ApolloWrapper |
+| `apollo-client.tsx` | `"use client"`; three-link chain (authLink → refreshLink → httpLink) |
+| `server.ts` | Hosts the `NextAuth()` call, jwt/session callbacks, inflight-refresh dedup, and RSC `registerApolloClient` |
+| `config.ts` | Edge-safe `NextAuthConfig` subset (pages + `authorized` callback). Kept split from `server.ts` because `proxy.ts` runs on the edge runtime and cannot pull in the Okta provider |
+| `proxy.ts` | Edge-safe Auth.js instance for Next.js 16's proxy; exports `default` (the handler) — the matcher literal lives in `src/proxy.ts` |
+| `route.ts` | Re-exports `{ GET, POST }` from `handlers` for the OIDC callback route |
+| `env.ts` | `requiredEnv(name)` helper that throws actionable errors for missing server env vars |
+| `next-auth.d.ts` | Module augmentation: `Session.accessToken`, `Session.error`, `JWT` fields |
 
 ### Token refresh flow
 

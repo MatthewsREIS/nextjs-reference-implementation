@@ -127,8 +127,8 @@ export default async function Home() {
           <CardTitle>1. RSC server query</CardTitle>
           <CardDescription>
             Executed on the server via <code>query()</code> from{" "}
-            <code>lib/apollo/server.ts</code>. The Okta access token is
-            attached as a bearer header.
+            <code>lib/matthews-graphql/server.ts</code>. The Okta access token
+            is attached as a bearer header.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-3">
@@ -246,7 +246,7 @@ export default async function Home() {
             needed. A 401 triggers <code>getSession()</code>, which runs
             the Auth.js <code>jwt</code> callback (rotating the Okta{" "}
             <code>access_token</code>), and the request is retried once
-            with the new token. See <code>src/lib/apollo/client.tsx</code>.
+            with the new token. See <code>src/lib/matthews-graphql/apollo-client.tsx</code>.
           </CardDescription>
         </CardHeader>
         <CardContent>
