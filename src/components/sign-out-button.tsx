@@ -1,4 +1,4 @@
-import { signOut } from "@/auth";
+import { signOut } from "@/lib/matthews-graphql/server";
 import { Button } from "@/components/ui/button";
 
 export function SignOutButton() {

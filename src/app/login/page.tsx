@@ -1,4 +1,4 @@
-import { signIn } from "@/auth";
+import { signIn } from "@/lib/matthews-graphql/server";
 import {
   Card,
   CardContent,

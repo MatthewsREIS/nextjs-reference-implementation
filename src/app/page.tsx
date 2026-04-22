@@ -1,7 +1,6 @@
 import { Suspense } from "react";
 import { print } from "graphql";
-import { auth } from "@/auth";
-import { query, PreloadQuery } from "@/lib/apollo/server";
+import { auth, query, PreloadQuery } from "@/lib/matthews-graphql/server";
 import {
   NOTIFICATIONS_COUNT_QUERY,
   RECENT_NOTIFICATIONS_QUERY,
