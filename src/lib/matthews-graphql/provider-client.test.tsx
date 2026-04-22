@@ -3,9 +3,9 @@ import { cleanup, render } from "@testing-library/react";
 import type { Session } from "next-auth";
 
 // Capture the props handed to SessionProvider so we can assert what the
-// layout-level Providers is passing downstream. ApolloWrapper is mocked out
-// because it depends on Apollo/SessionProvider runtime wiring that isn't
-// relevant to this test.
+// layout-level MatthewsGraphqlProviderClient is passing downstream.
+// ApolloWrapper is mocked out because it depends on Apollo/SessionProvider
+// runtime wiring that isn't relevant to this test.
 const sessionProviderSpy = vi.fn(
   ({ children }: { children: React.ReactNode }) => <>{children}</>,
 );
@@ -15,15 +15,15 @@ vi.mock("next-auth/react", () => ({
     sessionProviderSpy(props as never),
 }));
 
-vi.mock("@/lib/apollo/client", () => ({
+vi.mock("./apollo-client", () => ({
   ApolloWrapper: ({ children }: { children: React.ReactNode }) => (
     <>{children}</>
   ),
 }));
 
-const { Providers } = await import("./providers");
+const { MatthewsGraphqlProviderClient } = await import("./provider-client");
 
-describe("Providers", () => {
+describe("MatthewsGraphqlProviderClient", () => {
   afterEach(() => {
     cleanup();
     sessionProviderSpy.mockClear();
@@ -36,7 +36,11 @@ describe("Providers", () => {
       accessToken: "AT",
     } as Session;
 
-    render(<Providers session={session}>child</Providers>);
+    render(
+      <MatthewsGraphqlProviderClient session={session}>
+        child
+      </MatthewsGraphqlProviderClient>,
+    );
 
     expect(sessionProviderSpy).toHaveBeenCalledTimes(1);
     const props = sessionProviderSpy.mock.calls[0]![0] as { session?: Session };
@@ -44,7 +48,9 @@ describe("Providers", () => {
   });
 
   test("works without a session prop for unauthenticated shells", () => {
-    render(<Providers>child</Providers>);
+    render(
+      <MatthewsGraphqlProviderClient>child</MatthewsGraphqlProviderClient>,
+    );
 
     expect(sessionProviderSpy).toHaveBeenCalledTimes(1);
     const props = sessionProviderSpy.mock.calls[0]![0] as { session?: Session };

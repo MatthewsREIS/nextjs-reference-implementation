@@ -18,9 +18,17 @@ vi.mock("next-auth", () => ({
 vi.mock("next-auth/providers/okta", () => ({
   default: () => ({ id: "okta" }),
 }));
+vi.mock("@apollo/client-integration-nextjs", () => ({
+  registerApolloClient: (fn: () => unknown) => ({ query: vi.fn(), PreloadQuery: vi.fn(), getClient: fn }),
+  ApolloClient: vi.fn().mockImplementation(() => ({})),
+  InMemoryCache: vi.fn().mockImplementation(() => ({})),
+}));
+vi.mock("@apollo/client", () => ({
+  HttpLink: vi.fn().mockImplementation(() => ({})),
+}));
 
 const { jwtCallback, sessionCallback, _resetRefreshCacheForTests } =
-  await import("./auth");
+  await import("./server");
 
 const FIXED_TIME = new Date("2026-04-20T12:00:00Z");
 const nowSec = () => Math.floor(FIXED_TIME.getTime() / 1000);

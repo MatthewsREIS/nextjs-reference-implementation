@@ -1,7 +1,7 @@
 import { describe, expect, test } from "vitest";
 import type { Session } from "next-auth";
 import type { NextRequest } from "next/server";
-import authConfig from "./auth.config";
+import { authConfig } from "./config";
 
 const authorized = authConfig.callbacks!.authorized!;
 
