@@ -51,39 +51,6 @@ access token. Built with:
 ## Prerequisites
 
 - **bun** ≥ 1.2 (`curl -fsSL https://bun.sh/install | bash`)
-- Access to an Okta org with permission to create OIDC applications
-- A reachable GraphQL API endpoint (optional for first boot)
-
----
-
-## Okta app setup
-
-This repo uses a **public OIDC client** — PKCE-protected Authorization Code
-flow with **no client secret**. Pick either app type in Okta:
-
-- **Single-Page Application (SPA)**, or
-- **Web Application** with **Client authentication: None** and **PKCE required**
-
-Either works with Auth.js; both are "public clients" to OAuth.
-
-1. Okta Admin Console → **Applications** → **Create App Integration**
-2. Choose **OIDC - OpenID Connect**, then **Single-Page Application**
-   (or **Web Application** — see note above).
-3. **Grant types**: check **Authorization Code** and **Refresh Token**.
-4. **Client authentication**: **None** (if editing a Web App).
-   **Require PKCE as additional verification**: ✅ checked.
-5. **Sign-in redirect URIs** — add one per environment:
-   - `http://localhost:3000/api/auth/callback/okta`
-   - `https://<your-prod-host>/api/auth/callback/okta`
-6. **Sign-out redirect URIs**: not required for this setup — sign-out is
-   local-only (see [Sign-out behavior](#sign-out-behavior)). Leave the field
-   empty unless you plan to switch to federated logout.
-7. **Controlled access**: assign the appropriate groups.
-8. After save, copy the **Client ID** from General → Client Credentials into
-   `AUTH_OKTA_ID`. There is no client secret for public clients.
-9. Your `AUTH_OKTA_ISSUER` is the base Okta domain, e.g.
-   `https://your-org.okta.com` — **no** `/oauth2/default` suffix. This repo
-   uses the Org Authorization Server and hits `/oauth2/v1/token` for refresh.
 
 ---
 
@@ -96,12 +63,26 @@ bun install
 # Generate a session-signing secret
 printf "AUTH_SECRET=%s\n" "$(openssl rand -base64 33)" > .env.local
 
-# Append the rest — edit the placeholders in .env.example, then:
-cat .env.example >> .env.local   # and fill in values
+# Append the env-var template, then fill in the values below
+cat .env.example >> .env.local
 
 # Start the dev server
 bun dev
 ```
+
+Fill in `.env.local` with values for:
+
+| Variable | Purpose |
+| --- | --- |
+| `AUTH_SECRET` | Session-signing secret (generated above). |
+| `AUTH_OKTA_ID` | Okta OIDC public client ID. |
+| `AUTH_OKTA_ISSUER` | Base Okta domain, e.g. `https://your-org.okta.com` — **no** `/oauth2/default` suffix. This repo uses the Org Authorization Server and hits `/oauth2/v1/token` for refresh. |
+| `AUTH_TRUST_HOST` | Set to `true` behind a proxy or on non-Vercel hosts. Safe to leave `true` locally. |
+| `AUTH_URL` | Fully-qualified deploy URL. Required in production; leave blank locally. |
+| `GRAPHQL_API_URL` | Server-side GraphQL endpoint (used by the RSC Apollo client). Optional for first boot. |
+| `NEXT_PUBLIC_GRAPHQL_API_URL` | Browser-reachable GraphQL endpoint. Often the same value. |
+
+If you don't own the Okta tenant, ask whoever administers it for `AUTH_OKTA_ID` and `AUTH_OKTA_ISSUER`, and have them add `http://localhost:3000/api/auth/callback/okta` (and your deployed callback URL) to the app's sign-in redirect URIs.
 
 Visit `http://localhost:3000`:
 
@@ -234,7 +215,6 @@ Refresh *failures* always log via `console.error`, regardless of
 
 - Set `AUTH_URL` to the deployed origin (e.g. `https://nextjs-reference-implementation.example.com`).
 - Set `AUTH_TRUST_HOST=true` unless deploying to Vercel.
-- Add the deployed callback URL to your Okta app's **Sign-in redirect URIs**.
 - Rotate `AUTH_SECRET` per environment and store it in your secret manager.
 - `GRAPHQL_API_URL` stays server-side. Only use
   `NEXT_PUBLIC_GRAPHQL_API_URL` if the endpoint is intended to be
