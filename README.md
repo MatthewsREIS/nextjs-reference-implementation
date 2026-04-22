@@ -153,7 +153,7 @@ Internal files (you do not import these directly):
 
 ### Token refresh flow
 
-`src/auth.ts`'s `jwt` callback runs on every request that reads the session:
+The `jwt` callback in `src/lib/matthews-graphql/server.ts` runs on every request that reads the session:
 
 1. On initial sign-in Auth.js hands us the Okta `account` — we store
    `access_token`, `refresh_token`, and `expires_at` on the JWT. If
@@ -171,7 +171,7 @@ Internal files (you do not import these directly):
    and the next sign-in button click will force a fresh interactive login.
 
 **Server-side queries** (RSC in `src/app/page.tsx` and anywhere else using
-`query()` from `src/lib/apollo/server.ts`) pick up refreshed tokens
+`query()` from `@/lib/matthews-graphql/server`) pick up refreshed tokens
 automatically: the custom `fetch` calls `await auth()` on every request,
 which runs the `jwt` callback above.
 
@@ -181,21 +181,21 @@ which runs the `jwt` callback above.
    `useSession()` returns the session synchronously on first render and the
    Apollo `authLink` has the access token ready before the first client
    query fires — no `/api/auth/session` round-trip on hydrate.
-1. `SessionProvider` in `src/components/providers.tsx` re-fetches
+1. `SessionProvider` in `src/lib/matthews-graphql/provider-client.tsx` re-fetches
    `/api/auth/session` every 5 minutes (or `NEXT_PUBLIC_AUTH_DEBUG_TTL_SECONDS`
    when set — see [Debug helpers](#debug-helpers)) and whenever the tab
    regains focus. Each refetch runs the `jwt` callback, so the token Apollo
    holds stays fresh while the user is actively working.
 2. If a request still goes out with a just-expired token and the API
-   returns **401**, the `refreshLink` in `src/lib/apollo/client.tsx` forces
-   a session refresh via `getSession()` and retries the operation **once**.
+   returns **401**, the `refreshLink` in `src/lib/matthews-graphql/apollo-client.tsx`
+   forces a session refresh via `getSession()` and retries the operation **once**.
    A second 401 gives up — the session's `error` field surfaces to the
    home page so the user can re-authenticate.
 
-The `jwt` callback in `src/auth.ts` coalesces concurrent refreshes of the
-same refresh token so that two in-flight requests don't both POST it to
-Okta (which rotates the token on first use, invalidating the second
-caller). See the `inflightRefreshes` map in `src/auth.ts`.
+The `jwt` callback in `src/lib/matthews-graphql/server.ts` coalesces concurrent
+refreshes of the same refresh token so that two in-flight requests don't both
+POST it to Okta (which rotates the token on first use, invalidating the second
+caller). See the `inflightRefreshes` map in the same file.
 
 ### When client components use `useMounted`
 
