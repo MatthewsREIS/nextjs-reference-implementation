@@ -295,7 +295,9 @@ Refresh *failures* always log via `console.error`, regardless of
 ## Testing
 
 `bun run test` runs the Vitest unit suite; use `bun run test:watch` while
-iterating locally. Scope is intentionally limited to pure, synchronous
-modules (`src/lib/use-mounted.ts`, `src/lib/utils.ts`) — async Server
-Components are out of scope for Vitest per the Next.js guidance, and E2E
-coverage is out of scope for this reference app.
+iterating locally. The suite covers the pure/synchronous pieces of the
+stack: utility modules (`src/lib/use-mounted.ts`, `src/lib/utils.ts`), the
+package's synchronous logic (edge-safe `authorized` callback, jwt/session
+callbacks, refresh dedup, proxy matcher), and the client provider wrapper.
+Async Server Components are out of scope for Vitest per the Next.js
+guidance, and E2E coverage is out of scope for this reference app.
