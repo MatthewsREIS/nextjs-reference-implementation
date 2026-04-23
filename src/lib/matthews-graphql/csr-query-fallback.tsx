@@ -1,6 +1,6 @@
 "use client";
 
-import type { ReactNode } from "react";
+import type { ComponentType, ReactNode } from "react";
 import type {
   OperationVariables,
   TypedDocumentNode,
@@ -22,14 +22,18 @@ export function CsrQueryFallback<
   query,
   variables,
   loading,
-  error,
-  children,
+  ErrorComponent,
+  Renderer,
 }: {
   query: TypedDocumentNode<TData, TVariables>;
   variables?: TVariables;
   loading: ReactNode;
-  error: (err: Error) => ReactNode;
-  children: (result: { data: TData }) => ReactNode;
+  // Capital-case props by convention — these are component references
+  // (imports pointing at client components), not inline closures.
+  // Passing inline closures from an RSC would fail at the server→client
+  // serialization boundary.
+  ErrorComponent: ComponentType<{ error: Error }>;
+  Renderer: ComponentType<{ data: TData }>;
 }) {
   const mounted = useMounted();
   const { data, loading: queryLoading, error: queryError } = useQuery<
@@ -43,7 +47,7 @@ export function CsrQueryFallback<
   });
 
   if (!mounted || queryLoading) return <>{loading}</>;
-  if (queryError) return <>{error(queryError)}</>;
+  if (queryError) return <ErrorComponent error={queryError} />;
   if (data === undefined) return <>{loading}</>;
-  return <>{children({ data })}</>;
+  return <Renderer data={data} />;
 }
