@@ -24,7 +24,7 @@ describe("SafePreload", () => {
     mockPreloadQuery.mockClear();
   });
 
-  test("renders PreloadQuery with children on ok:true", async () => {
+  test("returns a PreloadQuery element wrapping children on ok:true", async () => {
     mockSafeQuery.mockResolvedValue({ ok: true, data: { x: 1 } });
 
     const element = await SafePreload({
@@ -35,12 +35,18 @@ describe("SafePreload", () => {
     });
 
     expect(mockSafeQuery).toHaveBeenCalledWith({ query: DOC, variables: VARS });
-    // Rendered tree should be a PreloadQuery call wrapping the child.
-    expect(mockPreloadQuery).toHaveBeenCalledWith(
-      expect.objectContaining({ query: DOC, variables: VARS }),
-      undefined,
-    );
-    expect(element).toBeDefined();
+    // JSX `<PreloadQuery ...>` creates an element descriptor — it does not
+    // invoke the component. Assert on the element's shape: its `type` must
+    // be the (mocked) PreloadQuery reference, and its `props` must carry
+    // the query + variables + children forward.
+    expect(element).toMatchObject({
+      type: mockPreloadQuery,
+      props: {
+        query: DOC,
+        variables: VARS,
+        children: expect.anything(),
+      },
+    });
   });
 
   test("renders fallback on ok:false (stale-token 401)", async () => {

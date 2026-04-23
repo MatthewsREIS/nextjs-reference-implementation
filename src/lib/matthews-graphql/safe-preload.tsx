@@ -1,4 +1,4 @@
-import type { ReactElement, ReactNode } from "react";
+import type { ReactNode } from "react";
 import type {
   ApolloClient as ApolloClientType,
   OperationVariables,
@@ -16,18 +16,6 @@ import { PreloadQuery, safeQuery } from "./server";
 //      the fetch through the client Apollo's ErrorLink retry.
 // Non-401 errors propagate out of safeQuery so real upstream bugs surface
 // instead of silently falling back.
-//
-// `PreloadQuery` is invoked directly as a function rather than via JSX so the
-// preload side effect (priming the RSC Apollo cache) runs inside SafePreload's
-// own async body — predictable, synchronous w.r.t. the `await safeQuery` above,
-// and observable from unit tests that `await SafePreload(...)` without a full
-// render. React's RSC runtime invokes components with `(props, undefined)`
-// (the second arg is legacy context); we match that signature.
-type ServerComponent<TProps> = (
-  props: TProps,
-  legacyContext?: undefined,
-) => ReactElement | Promise<ReactElement>;
-
 export async function SafePreload<
   TData = unknown,
   TVariables extends OperationVariables = OperationVariables,
@@ -55,17 +43,20 @@ export async function SafePreload<
     return <>{fallback}</>;
   }
 
-  const preload = PreloadQuery as unknown as ServerComponent<{
+  // `TypedPreloadQuery` pins the generic shape TS can actually evaluate.
+  // Apollo's real `PreloadQuery` props inherit a `{} extends TVariables`
+  // conditional overload from `Omit<QueryOptions, "query">`, which TS
+  // can't resolve for a generic `TVariables` here. Concrete call sites
+  // (see `src/app/page.tsx`) typecheck the same JSX without any cast —
+  // this alias is scoped to SafePreload's generic boundary.
+  const TypedPreloadQuery = PreloadQuery as (props: {
     query: TypedDocumentNode<TData, TVariables>;
     variables?: TVariables;
     children: ReactNode;
-  }>;
-  return preload(
-    {
-      query,
-      ...(variables !== undefined ? { variables } : {}),
-      children,
-    },
-    undefined,
+  }) => ReturnType<typeof PreloadQuery>;
+  return (
+    <TypedPreloadQuery query={query} variables={variables}>
+      {children}
+    </TypedPreloadQuery>
   );
 }
