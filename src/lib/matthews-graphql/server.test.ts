@@ -514,7 +514,11 @@ describe("safeQuery", () => {
     const err = makeServerError(401);
     mockQuery.mockRejectedValue(err);
     const result = await safeQuery({ query: {} as never });
-    expect(result).toEqual({ ok: false, error: err });
+    expect(result).toEqual({
+      ok: false,
+      reason: "stale-token-401",
+      error: err,
+    });
   });
 
   test("re-throws a ServerError that isn't 401 (real upstream error)", async () => {
@@ -534,5 +538,35 @@ describe("safeQuery", () => {
   test("re-throws a non-Error thrown value", async () => {
     mockQuery.mockRejectedValue("plain string");
     await expect(safeQuery({ query: {} as never })).rejects.toBe("plain string");
+  });
+
+  test("ok:true narrows data to TData (not undefined) so callers can drop optional chaining", async () => {
+    mockQuery.mockResolvedValue({ data: { hello: "world" } });
+    const result = await safeQuery<{ hello: string }>({ query: {} as never });
+    if (!result.ok) throw new Error("expected ok");
+    // If the type were `TData | undefined` this line would need `result.data?.hello`.
+    expect(result.data.hello).toBe("world");
+  });
+
+  test("ok:false includes reason:'stale-token-401' discriminant", async () => {
+    const err = makeServerError(401);
+    mockQuery.mockRejectedValue(err);
+    const result = await safeQuery({ query: {} as never });
+    expect(result).toEqual({
+      ok: false,
+      reason: "stale-token-401",
+      error: err,
+    });
+  });
+
+  test("throws a loud error when Apollo returns data:undefined without throwing", async () => {
+    // In practice Apollo's query() throws on GraphQL errors, so data:undefined
+    // without an error indicates a malformed upstream response. Surface it
+    // instead of returning ok:true with data:undefined (which the previous
+    // type signature allowed).
+    mockQuery.mockResolvedValue({ data: undefined });
+    await expect(safeQuery({ query: {} as never })).rejects.toThrow(
+      /safeQuery: Apollo returned no data/,
+    );
   });
 });

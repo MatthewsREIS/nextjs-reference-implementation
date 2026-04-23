@@ -86,24 +86,24 @@ describe("SafePreload", () => {
     ).rejects.toBe(boom);
   });
 
-  test("ok:true with data:undefined still enters the PreloadQuery branch (fixed transitively by Phase B1)", async () => {
-    // Today `safeQuery`'s return type is `{ ok: true; data: TData | undefined }`.
-    // If Apollo returned `undefined` data (malformed upstream), SafePreload
-    // would still render <PreloadQuery>, hanging the child Suspense instead
-    // of surfacing loudly. This is acceptable TODAY because Phase B1 narrows
-    // `SafeQueryResult.data` to `TData` on `ok:true` and makes `safeQuery`
-    // throw on undefined data — at which point this branch becomes
-    // unreachable. This test is a regression guard for current behavior;
-    // update it when Task 5 (B1) lands.
-    mockSafeQuery.mockResolvedValue({ ok: true, data: undefined });
+  test("rejects when safeQuery throws on malformed response (Phase B1 contract)", async () => {
+    // After Phase B1, safeQuery throws "[matthews-graphql] safeQuery: Apollo
+    // returned no data and no error" on data:undefined rather than returning
+    // ok:true with undefined data. SafePreload has no special handling — it
+    // lets the error propagate because its ok:true branch can now trust
+    // `data` is defined.
+    const boom = new Error(
+      "[matthews-graphql] safeQuery: Apollo returned no data and no error",
+    );
+    mockSafeQuery.mockRejectedValue(boom);
 
-    const element = await SafePreload({
-      query: DOC,
-      variables: VARS,
-      fallback: <p>FALLBACK</p>,
-      children: <p>CHILD</p>,
-    });
-
-    expect(element).toMatchObject({ type: mockPreloadQuery });
+    await expect(
+      SafePreload({
+        query: DOC,
+        variables: VARS,
+        fallback: <p>FALLBACK</p>,
+        children: <p>CHILD</p>,
+      }),
+    ).rejects.toBe(boom);
   });
 });

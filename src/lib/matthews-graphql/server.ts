@@ -235,15 +235,16 @@ export async function requireSession(): Promise<AuthenticatedSession> {
 // session whose previous refresh already failed (`session.error ===
 // "RefreshAccessTokenError"`), which `requireSession` intentionally passes
 // through. Such sessions render with a cached-but-rejected access token and
-// the query 401s. On `ok: false`, the caller renders a CSR fallback that
-// routes through the client Apollo's response-level `ErrorLink`, which
-// re-fetches the session and retries. Every non-401 error is re-thrown so
+// the query 401s. On `ok: false` (`reason: "stale-token-401"`), the caller
+// renders a CSR fallback that routes through the client Apollo's
+// response-level `ErrorLink`, which re-fetches the session and retries.
+// Every non-401 error is re-thrown so
 // real bugs (validation, 500s, non-auth failures) surface loudly instead
 // of hiding behind a CSR fallback that would also fail. Do not use this
 // as a general-purpose try/catch.
 export type SafeQueryResult<TData> =
-  | { ok: true; data: TData | undefined }
-  | { ok: false; error: ServerError };
+  | { ok: true; data: TData }
+  | { ok: false; reason: "stale-token-401"; error: ServerError };
 
 export async function safeQuery<
   TData = unknown,
@@ -253,10 +254,18 @@ export async function safeQuery<
 ): Promise<SafeQueryResult<TData>> {
   try {
     const { data } = await query<TData, TVariables>(options);
+    if (data === undefined) {
+      // Apollo 4's query() throws on GraphQL errors; an undefined data here
+      // indicates a malformed upstream response. Don't hide it behind
+      // ok:true — bubble it up so the bug is visible.
+      throw new Error(
+        "[matthews-graphql] safeQuery: Apollo returned no data and no error",
+      );
+    }
     return { ok: true, data };
   } catch (error) {
     if (ServerError.is(error) && error.statusCode === 401) {
-      return { ok: false, error };
+      return { ok: false, reason: "stale-token-401", error };
     }
     throw error;
   }

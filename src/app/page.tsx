@@ -135,15 +135,13 @@ export default async function Home() {
               <p className="text-sm">
                 Unread notifications:{" "}
                 <span className="font-mono">
-                  {countResult.data?.notifications?.totalCount ?? "—"}
+                  {countResult.data.notifications.totalCount}
                 </span>
               </p>
             </>
           ) : (
             <pre className="text-sm text-destructive">
-              {countResult.error instanceof Error
-                ? countResult.error.message
-                : String(countResult.error)}
+              {countResult.error.message}
             </pre>
           )}
         </CardContent>
