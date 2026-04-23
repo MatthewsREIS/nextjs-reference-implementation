@@ -28,11 +28,18 @@ export function CsrQueryFallback<
   query: TypedDocumentNode<TData, TVariables>;
   variables?: TVariables;
   loading: ReactNode;
-  // Capital-case props by convention — these are component references
-  // (imports pointing at client components), not inline closures.
-  // Passing inline closures from an RSC would fail at the server→client
-  // serialization boundary.
+  /**
+   * Component reference (an imported client component), not an inline
+   * closure. Capital-case by convention so a call site that forgets this
+   * rule at least reads suspiciously. `<SafePreload>` also hands this prop
+   * across the RSC→client boundary; inline arrows defined inside the RSC
+   * fail with "Functions cannot be passed directly to Client Components."
+   */
   ErrorComponent: ComponentType<{ error: Error }>;
+  /**
+   * Component reference (an imported client component), not an inline
+   * closure. Same RSC→client serialization rule as `ErrorComponent`.
+   */
   Renderer: ComponentType<{ data: TData }>;
 }) {
   const mounted = useMounted();
