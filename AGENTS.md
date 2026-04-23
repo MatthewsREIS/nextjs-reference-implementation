@@ -18,14 +18,36 @@ When adding a page or component under `src/app/**`, trust the wrapper:
 ## Server-side helpers
 
 - `requireSession()` — returns the session, or redirects to `/login` if there's no user or `session.error === "NoRefreshToken"`. Use this instead of hand-rolling `auth()` + null check + redirect. A `RefreshAccessTokenError` is recoverable on the next request, so it returns the session with the error set — render a warning if you want to surface it.
-- `safeQuery({ query, variables })` — wraps `query()` and returns `{ ok: true, data }` or `{ ok: false, error }`. Use this for RSC fetches. The RSC Apollo client already refreshes pre-emptively — its custom `fetch` calls `await auth()` on every request, which re-runs the `jwt` callback — so most stale-token cases heal automatically. `safeQuery` catches the residual case: a session whose previous refresh already failed (`session.error === "RefreshAccessTokenError"`) where the cached access token is now rejected by the API. `requireSession()` intentionally passes those sessions through, so the RSC still renders and the query still fires with a stale token. On `ok: false`, fall back to a client component — the client Apollo has a response-level `ErrorLink` that re-fetches the session and retries, recovering those sessions on the next client interaction. (`data` is `TData | undefined` on the `ok: true` branch because Apollo's `query()` types it that way; use `?.` at the call site.)
-- `PreloadQuery` cannot be wrapped in try/catch at the JSX level. Pre-warm with `safeQuery` first; if it fails, render the CSR fallback instead of `PreloadQuery`. See `src/app/page.tsx` Card 4 for the full RSC→CSR recipe.
+- `safeQuery({ query, variables })` — wraps `query()` and returns `{ ok: true, data }` or `{ ok: false, error }`. Use this for RSC fetches. The RSC Apollo client already refreshes pre-emptively — its custom `fetch` calls `await auth()` on every request, which re-runs the `jwt` callback — so most stale-token cases heal automatically. `safeQuery` catches the residual case: a session whose previous refresh already failed (`session.error === "RefreshAccessTokenError"`) where the cached access token is now rejected by the API. `requireSession()` intentionally passes those sessions through, so the RSC still renders and the query still fires with a stale token. On `ok: false`, fall back to a client component — the client Apollo has a response-level `ErrorLink` that re-fetches the session and retries, recovering those sessions on the next client interaction. (`data` is `TData | undefined` on the `ok: true` branch because Apollo's `query()` types it that way; use `?.` at the call site.) See `src/app/page.tsx` Card 4 for a `SafePreload` example.
+- `SafePreload` — the drop-in for `PreloadQuery`. Pre-warms the cache with `safeQuery` and falls back to its `fallback` prop on a stale-token 401. Usage:
+  ```tsx
+  <SafePreload
+    query={MY_QUERY}
+    variables={vars}
+    fallback={
+      <CsrQueryFallback
+        query={MY_QUERY}
+        variables={vars}
+        loading={<MyLoading />}
+        ErrorComponent={MyErrorComponent}
+        Renderer={MyRenderer}
+      />
+    }
+  >
+    <Suspense fallback={<MyLoading />}>
+      <MyClientConsumer variables={vars} />
+    </Suspense>
+  </SafePreload>
+  ```
+  `MyClientConsumer` uses `useSuspenseQuery(MY_QUERY, { variables: vars })` and renders via `<MyRenderer data={data} />` so the preloaded branch and the CSR branch share the same renderer. `ErrorComponent` and `Renderer` are **component references** (imported identifiers), not inline closures — closures would fail at the RSC→client serialization boundary. Reference: `src/app/page.tsx` Card 4.
+- `CsrQueryFallback` — the client partner for `SafePreload`. Mount-gates a `useQuery` so the fetch runs under the client Apollo's `ErrorLink`, which re-fetches the session and retries. The mount gate here is load-bearing (see the `useMounted` notes below); **do not copy the pattern elsewhere**.
+- Raw `PreloadQuery` is still exported from `/server` for advanced uses, but default to `SafePreload` — it's the one an agent should reach for.
 
 ## Client Components
 
 - **Default:** plain `useQuery` / `useMutation` / `useSuspenseQuery`. The client Apollo's `refreshLink` heals stale-token 401s transparently — do **not** gate queries on `useMounted` reflexively.
 - There are only two legitimate reasons to use `useMounted` + `skip: !mounted`:
-  1. **CSR fallback after an RSC `PreloadQuery` 401.** The RSC's pre-emptive refresh via `auth()` has already failed for this session (see the `safeQuery` note above); routing the fetch through the client Apollo's response-level `ErrorLink` is what recovers it. This is Card 4's whole point. Reference: `src/components/examples/suspense-example-csr.tsx`.
+  1. **Inside `CsrQueryFallback`** — that primitive is the blessed way to do this. Do not hand-roll the mount-gate yourself. Reference: `src/lib/matthews-graphql/csr-query-fallback.tsx`.
   2. **Hydration-sensitive UI** (e.g. a Base UI `<Button disabled>` that serializes differently SSR vs CSR). Gate the **UI**, not the query. Reference: `src/components/examples/mutation-example.tsx`.
 - If neither applies, skip `useMounted` — it costs an extra render for nothing.
 
