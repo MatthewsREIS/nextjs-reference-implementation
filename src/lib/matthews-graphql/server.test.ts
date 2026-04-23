@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import type { Account, Session } from "next-auth";
 import type { JWT } from "next-auth/jwt";
+import { ServerError } from "@apollo/client/errors";
 
 // `./auth` calls NextAuth() at module load to build the real handlers.
 // Stub the factory out so importing this file doesn't drag in next-auth's
@@ -43,20 +44,10 @@ vi.mock("@apollo/client-integration-nextjs", () => ({
 vi.mock("@apollo/client", () => ({
   HttpLink: vi.fn().mockImplementation(() => ({})),
 }));
-// safeQuery uses ServerError.is() to detect stale-token 401s. Mock the type
-// guard so tests can fabricate "ServerError-shaped" errors without pulling in
-// Apollo's real branded-instance machinery.
-vi.mock("@apollo/client/errors", () => ({
-  ServerError: {
-    is: (e: unknown): boolean =>
-      typeof e === "object" && e !== null && "__isServerError" in e,
-  },
-}));
-
 const makeServerError = (statusCode: number) =>
-  Object.assign(new Error(`ServerError ${statusCode}`), {
-    __isServerError: true,
-    statusCode,
+  new ServerError(`ServerError ${statusCode}`, {
+    response: new Response(null, { status: statusCode }),
+    bodyText: "",
   });
 
 const {
