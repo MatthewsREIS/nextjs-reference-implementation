@@ -128,12 +128,14 @@ Visit `http://localhost:3000`:
 
 ## How the pieces connect
 
-Everything lives in `src/lib/matthews-graphql/`. Four public entry points:
+Everything lives in `src/lib/matthews-graphql/`. Six public entry points:
 
 | Subpath import | What it gives you |
 | --- | --- |
 | `@/lib/matthews-graphql` | `MatthewsGraphqlProvider` — the async RSC you drop into `layout.tsx` |
 | `@/lib/matthews-graphql/server` | RSC Apollo (`query`, `PreloadQuery`, `safeQuery`), Auth.js runtime (`auth`, `requireSession`, `handlers`, `signIn`, `signOut`) |
+| `@/lib/matthews-graphql/safe-preload` | `SafePreload` — the default RSC preload primitive. Wraps `safeQuery` + `<PreloadQuery>` and falls back to `<CsrQueryFallback>` on a stale-token 401 |
+| `@/lib/matthews-graphql/csr-query-fallback` | `CsrQueryFallback` — the client partner used by `SafePreload`. You rarely reach for it directly |
 | `@/lib/matthews-graphql/route` | `GET`, `POST` for `src/app/api/auth/[...nextauth]/route.ts` |
 | `@/lib/matthews-graphql/proxy` | Edge-safe auth handler — imported by `src/proxy.ts`, which inlines `config.matcher` (Next.js 16 static-analysis requirement) |
 
