@@ -55,7 +55,10 @@ export async function SafePreload<
     children: ReactNode;
   }) => ReturnType<typeof PreloadQuery>;
   return (
-    <TypedPreloadQuery query={query} variables={variables}>
+    <TypedPreloadQuery
+      query={query}
+      {...(variables !== undefined ? { variables } : {})}
+    >
       {children}
     </TypedPreloadQuery>
   );

@@ -39,6 +39,10 @@ describe("SafePreload", () => {
     // invoke the component. Assert on the element's shape: its `type` must
     // be the (mocked) PreloadQuery reference, and its `props` must carry
     // the query + variables + children forward.
+    // Regression guard: if someone reverts to invoking PreloadQuery as a
+    // direct function call (pre-`9490f20` pattern), the mock's inner
+    // `<div>` return value would flow through and `element.type` would be
+    // `"div"`, not `mockPreloadQuery`. This assertion catches that.
     expect(element).toMatchObject({
       type: mockPreloadQuery,
       props: {
@@ -80,5 +84,26 @@ describe("SafePreload", () => {
         children: <p>CHILD</p>,
       }),
     ).rejects.toBe(boom);
+  });
+
+  test("ok:true with data:undefined still enters the PreloadQuery branch (fixed transitively by Phase B1)", async () => {
+    // Today `safeQuery`'s return type is `{ ok: true; data: TData | undefined }`.
+    // If Apollo returned `undefined` data (malformed upstream), SafePreload
+    // would still render <PreloadQuery>, hanging the child Suspense instead
+    // of surfacing loudly. This is acceptable TODAY because Phase B1 narrows
+    // `SafeQueryResult.data` to `TData` on `ok:true` and makes `safeQuery`
+    // throw on undefined data — at which point this branch becomes
+    // unreachable. This test is a regression guard for current behavior;
+    // update it when Task 5 (B1) lands.
+    mockSafeQuery.mockResolvedValue({ ok: true, data: undefined });
+
+    const element = await SafePreload({
+      query: DOC,
+      variables: VARS,
+      fallback: <p>FALLBACK</p>,
+      children: <p>CHILD</p>,
+    });
+
+    expect(element).toMatchObject({ type: mockPreloadQuery });
   });
 });
