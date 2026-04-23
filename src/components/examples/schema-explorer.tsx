@@ -16,6 +16,10 @@ import { INTROSPECTION_QUERY } from "@/graphql/examples";
 export function SchemaExplorer() {
   const { data, loading, error } = useQuery<IntrospectionQuery>(
     INTROSPECTION_QUERY,
+    // Introspection responses are large and rarely change during a session.
+    // Skip the normalised cache so we neither balloon it nor pay the cost
+    // of normalising every schema type. Do not copy this policy to regular
+    // queries — it's specific to introspection's size/volatility profile.
     { fetchPolicy: "no-cache" },
   );
 
