@@ -210,8 +210,11 @@ export const { query, PreloadQuery } = registerApolloClient(() => {
 
 // Session narrowed to guarantee `user` is present — what callers get back from
 // requireSession() so they don't need optional chaining on `session.user`.
-export type AuthenticatedSession = Session & {
+export type AuthenticatedSession = Omit<Session, "error"> & {
   user: NonNullable<Session["user"]>;
+  // NoRefreshToken was redirected away by requireSession; only the
+  // recoverable RefreshAccessTokenError can still be present here.
+  error?: "RefreshAccessTokenError";
 };
 
 // `proxy.ts` already gates routes, but RSC pages re-check session at render

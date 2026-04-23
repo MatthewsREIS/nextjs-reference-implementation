@@ -483,6 +483,24 @@ describe("requireSession", () => {
     expect(result).toBe(session);
     expect(mockRedirect).not.toHaveBeenCalled();
   });
+
+  test("return type narrows error to undefined | 'RefreshAccessTokenError' (not 'NoRefreshToken')", async () => {
+    const session = {
+      user: { email: "u@example.com" },
+      expires: "2099-01-01T00:00:00.000Z",
+      error: "RefreshAccessTokenError" as const,
+    } as Session;
+    mockAuth.mockResolvedValue(session);
+
+    const result = await requireSession();
+
+    // Narrowed type check: `result.error` should accept "RefreshAccessTokenError"
+    // or be undefined. Assigning "NoRefreshToken" to this variable must be a
+    // type error. We assert the runtime value here; the type assertion below
+    // is what fails to compile if the narrowing regresses.
+    const narrow: "RefreshAccessTokenError" | undefined = result.error;
+    expect(narrow).toBe("RefreshAccessTokenError");
+  });
 });
 
 describe("safeQuery", () => {
