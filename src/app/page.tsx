@@ -1,10 +1,6 @@
 import { Suspense } from "react";
 import { print } from "graphql";
-import {
-  PreloadQuery,
-  requireSession,
-  safeQuery,
-} from "@/lib/matthews-graphql/server";
+import { requireSession, safeQuery } from "@/lib/matthews-graphql/server";
 import {
   NOTIFICATIONS_COUNT_QUERY,
   RECENT_NOTIFICATIONS_QUERY,
@@ -14,10 +10,13 @@ import { CodeBlock } from "@/components/code-block";
 import { PaginationExample } from "@/components/examples/pagination-example";
 import { SearchExample } from "@/components/examples/search-example";
 import {
+  NotificationsError,
+  NotificationsLoading,
+  NotificationsView,
   SuspenseExample,
-  SUSPENSE_VARS,
 } from "@/components/examples/suspense-example";
-import { SuspenseExampleCsr } from "@/components/examples/suspense-example-csr";
+import { SafePreload } from "@/lib/matthews-graphql/safe-preload";
+import { CsrQueryFallback } from "@/lib/matthews-graphql/csr-query-fallback";
 import { MutationExample } from "@/components/examples/mutation-example";
 import { SchemaExplorer } from "@/components/examples/schema-explorer";
 import {
@@ -55,6 +54,10 @@ const REFRESH_LINK_SNIPPET = `const refreshLink = new ErrorLink(({ error, operat
   );
 });`;
 
+// Variables used by both the RSC preload and the CSR fallback. Centralised
+// here so the two branches can't drift.
+const SUSPENSE_VARS = { first: 3, after: null, read: false };
+
 export default async function Home() {
   // proxy.ts already gated this route; requireSession() re-checks at render
   // time and redirects to /login on a torn-down session, so the rest of the
@@ -63,16 +66,6 @@ export default async function Home() {
 
   const countResult = await safeQuery<NotificationsCountData>({
     query: NOTIFICATIONS_COUNT_QUERY,
-  });
-
-  // PreloadQuery can't be wrapped in try/catch at the JSX level. Pre-warm the
-  // server-side cache for card 4 with safeQuery; on a 401 (RSC's pre-emptive
-  // refresh via auth() already failed, so session.error is set and the cached
-  // access token is rejected) fall back to a client-only useSuspenseQuery
-  // that heals via the client Apollo's response-level ErrorLink retry.
-  const preloadResult = await safeQuery({
-    query: RECENT_NOTIFICATIONS_QUERY,
-    variables: SUSPENSE_VARS,
   });
 
   return (
@@ -201,22 +194,23 @@ export default async function Home() {
           <CodeBlock label="Query">
             {print(RECENT_NOTIFICATIONS_QUERY)}
           </CodeBlock>
-          {preloadResult.ok ? (
-            <PreloadQuery
-              query={RECENT_NOTIFICATIONS_QUERY}
-              variables={SUSPENSE_VARS}
-            >
-              <Suspense
-                fallback={
-                  <p className="text-sm text-muted-foreground">Loading…</p>
-                }
-              >
-                <SuspenseExample />
-              </Suspense>
-            </PreloadQuery>
-          ) : (
-            <SuspenseExampleCsr />
-          )}
+          <SafePreload
+            query={RECENT_NOTIFICATIONS_QUERY}
+            variables={SUSPENSE_VARS}
+            fallback={
+              <CsrQueryFallback
+                query={RECENT_NOTIFICATIONS_QUERY}
+                variables={SUSPENSE_VARS}
+                loading={<NotificationsLoading />}
+                ErrorComponent={NotificationsError}
+                Renderer={NotificationsView}
+              />
+            }
+          >
+            <Suspense fallback={<NotificationsLoading />}>
+              <SuspenseExample variables={SUSPENSE_VARS} />
+            </Suspense>
+          </SafePreload>
         </CardContent>
       </Card>
 
