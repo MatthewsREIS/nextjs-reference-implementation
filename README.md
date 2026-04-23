@@ -60,7 +60,7 @@ Everything auth- and GraphQL-related lives in `src/lib/matthews-graphql/`. The s
 | `src/app/layout.tsx` | `<MatthewsGraphqlProvider>{children}</MatthewsGraphqlProvider>` |
 | `src/app/api/auth/[...nextauth]/route.ts` | `export { GET, POST } from "@/lib/matthews-graphql/route"` |
 | `src/proxy.ts` | 3-line wrapper: import the handler as `proxy`, inline the `config.matcher` literal (Next.js 16 requires it) |
-| Any RSC | `import { query, PreloadQuery, auth } from "@/lib/matthews-graphql/server"` |
+| Any RSC | `import { query, PreloadQuery, safeQuery, requireSession, auth } from "@/lib/matthews-graphql/server"` |
 | Any client component | `useQuery`/`useMutation` from `@apollo/client/react`, `useSession` from `next-auth/react` |
 | `src/components/sign-out-button.tsx` / `src/app/login/page.tsx` | `signIn`/`signOut` from `@/lib/matthews-graphql/server` |
 
@@ -71,7 +71,7 @@ Everything auth- and GraphQL-related lives in `src/lib/matthews-graphql/`. The s
 Add a route under `src/app/**`. Anything rendered under the root layout is
 already inside `<MatthewsGraphqlProvider>`:
 
-- **Server Components**: `import { query, PreloadQuery, auth } from "@/lib/matthews-graphql/server"` and call them directly. The Okta access token is attached to every GraphQL request.
+- **Server Components**: `import { query, PreloadQuery, safeQuery, requireSession, auth } from "@/lib/matthews-graphql/server"` and call them directly. The Okta access token is attached to every GraphQL request. Use `requireSession()` to gate a page (redirects to `/login` on missing user or `NoRefreshToken`); use `safeQuery()` to fetch with a `{ ok, data | error }` result so a stale-token throw can fall back to a CSR component instead of crashing the page.
 - **Client Components**: `useQuery`, `useMutation`, `useSuspenseQuery` from `@apollo/client/react` and `useSession` from `next-auth/react`. The provider already wires them up.
 - **Token refresh, 401 retry, concurrent-refresh dedup, and idle polling** are already handled inside the package. Don't re-implement them.
 
@@ -133,7 +133,7 @@ Everything lives in `src/lib/matthews-graphql/`. Four public entry points:
 | Subpath import | What it gives you |
 | --- | --- |
 | `@/lib/matthews-graphql` | `MatthewsGraphqlProvider` — the async RSC you drop into `layout.tsx` |
-| `@/lib/matthews-graphql/server` | RSC Apollo (`query`, `PreloadQuery`), Auth.js runtime (`auth`, `handlers`, `signIn`, `signOut`) |
+| `@/lib/matthews-graphql/server` | RSC Apollo (`query`, `PreloadQuery`, `safeQuery`), Auth.js runtime (`auth`, `requireSession`, `handlers`, `signIn`, `signOut`) |
 | `@/lib/matthews-graphql/route` | `GET`, `POST` for `src/app/api/auth/[...nextauth]/route.ts` |
 | `@/lib/matthews-graphql/proxy` | Edge-safe auth handler — imported by `src/proxy.ts`, which inlines `config.matcher` (Next.js 16 static-analysis requirement) |
 

@@ -1,7 +1,12 @@
 import NextAuth, { type Account, type Session } from "next-auth";
 import Okta from "next-auth/providers/okta";
 import type { JWT } from "next-auth/jwt";
-import { HttpLink } from "@apollo/client";
+import { redirect } from "next/navigation";
+import {
+  HttpLink,
+  type ApolloClient as ApolloClientType,
+  type OperationVariables,
+} from "@apollo/client";
 import {
   registerApolloClient,
   ApolloClient,
@@ -192,3 +197,45 @@ export const { query, PreloadQuery } = registerApolloClient(() => {
     }),
   });
 });
+
+// Session narrowed to guarantee `user` is present — what callers get back from
+// requireSession() so they don't need optional chaining on `session.user`.
+export type AuthenticatedSession = Session & {
+  user: NonNullable<Session["user"]>;
+};
+
+// `proxy.ts` already gates routes, but RSC pages re-check session at render
+// time so a stale or torn-down session bounces to /login instead of rendering
+// an empty page. `NoRefreshToken` means the refresh token is gone — no recovery
+// is possible — so treat it the same as no session. `RefreshAccessTokenError`
+// is recoverable on the next request, so it's surfaced to the caller via
+// `session.error` rather than redirected away.
+export async function requireSession(): Promise<AuthenticatedSession> {
+  const session = await auth();
+  if (!session?.user || session.error === "NoRefreshToken") {
+    redirect("/login");
+  }
+  return session as AuthenticatedSession;
+}
+
+// RSC Apollo (`query`, `PreloadQuery`) has no refresh link — a stale access
+// token throws. Wrap calls in `safeQuery` to get a discriminated result so
+// callers can fall back to a CSR component (which DOES refresh) without
+// hand-rolling try/catch on every page.
+export type SafeQueryResult<TData> =
+  | { ok: true; data: TData | undefined }
+  | { ok: false; error: unknown };
+
+export async function safeQuery<
+  TData = unknown,
+  TVariables extends OperationVariables = OperationVariables,
+>(
+  options: ApolloClientType.QueryOptions<TData, TVariables>,
+): Promise<SafeQueryResult<TData>> {
+  try {
+    const { data } = await query<TData, TVariables>(options);
+    return { ok: true, data };
+  } catch (error) {
+    return { ok: false, error };
+  }
+}

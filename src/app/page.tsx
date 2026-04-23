@@ -1,6 +1,10 @@
 import { Suspense } from "react";
 import { print } from "graphql";
-import { auth, query, PreloadQuery } from "@/lib/matthews-graphql/server";
+import {
+  PreloadQuery,
+  requireSession,
+  safeQuery,
+} from "@/lib/matthews-graphql/server";
 import {
   NOTIFICATIONS_COUNT_QUERY,
   RECENT_NOTIFICATIONS_QUERY,
@@ -52,41 +56,34 @@ const REFRESH_LINK_SNIPPET = `const refreshLink = new ErrorLink(({ error, operat
 });`;
 
 export default async function Home() {
-  // proxy.ts has already gated this route, but re-check here to satisfy
-  // Next.js' recommendation to treat session auth as a page-level concern.
-  const session = await auth();
+  // proxy.ts already gated this route; requireSession() re-checks at render
+  // time and redirects to /login on a torn-down session, so the rest of the
+  // page can assume session.user exists.
+  const session = await requireSession();
 
-  const { data: countData, error: countError } = await query<
-    NotificationsCountData
-  >({
+  const countResult = await safeQuery<NotificationsCountData>({
     query: NOTIFICATIONS_COUNT_QUERY,
-  }).catch((err: unknown) => ({ data: null, error: err }));
+  });
 
-  // PreloadQuery can't be wrapped in try/catch at the JSX level. Warm the
-  // server-side cache for card 4 first; if that fetch throws (e.g. a 401
-  // because the RSC Apollo client has no refresh link), fall back to a
-  // client-only useSuspenseQuery that will refresh the Okta token via
-  // the client-side refreshLink and retry.
-  let preloadedOk = true;
-  try {
-    await query({
-      query: RECENT_NOTIFICATIONS_QUERY,
-      variables: SUSPENSE_VARS,
-    });
-  } catch {
-    preloadedOk = false;
-  }
+  // PreloadQuery can't be wrapped in try/catch at the JSX level. Pre-warm the
+  // server-side cache for card 4 with safeQuery; on a stale-token throw
+  // (the RSC Apollo client has no refresh link) fall back to a client-only
+  // useSuspenseQuery that refreshes via the client-side refreshLink.
+  const preloadResult = await safeQuery({
+    query: RECENT_NOTIFICATIONS_QUERY,
+    variables: SUSPENSE_VARS,
+  });
 
   return (
     <main className="mx-auto w-full max-w-3xl space-y-6 p-6">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-semibold">
-          Hello, {session?.user?.name ?? session?.user?.email ?? "there"}
+          Hello, {session.user.name ?? session.user.email ?? "there"}
         </h1>
         <SignOutButton />
       </div>
 
-      {session?.error && (
+      {session.error && (
         <Card>
           <CardHeader>
             <CardTitle>Session warning</CardTitle>
@@ -133,16 +130,10 @@ export default async function Home() {
         </CardHeader>
         <CardContent className="space-y-3">
           <CodeBlock label="Query">{print(NOTIFICATIONS_COUNT_QUERY)}</CodeBlock>
-          {countError ? (
-            <pre className="text-sm text-destructive">
-              {countError instanceof Error
-                ? countError.message
-                : String(countError)}
-            </pre>
-          ) : (
+          {countResult.ok ? (
             <>
               <CodeBlock label="Response">
-                {JSON.stringify(countData, null, 2)}
+                {JSON.stringify(countResult.data, null, 2)}
               </CodeBlock>
               <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                 Rendered
@@ -150,10 +141,16 @@ export default async function Home() {
               <p className="text-sm">
                 Unread notifications:{" "}
                 <span className="font-mono">
-                  {countData?.notifications?.totalCount ?? "—"}
+                  {countResult.data?.notifications?.totalCount ?? "—"}
                 </span>
               </p>
             </>
+          ) : (
+            <pre className="text-sm text-destructive">
+              {countResult.error instanceof Error
+                ? countResult.error.message
+                : String(countResult.error)}
+            </pre>
           )}
         </CardContent>
       </Card>
@@ -203,7 +200,7 @@ export default async function Home() {
           <CodeBlock label="Query">
             {print(RECENT_NOTIFICATIONS_QUERY)}
           </CodeBlock>
-          {preloadedOk ? (
+          {preloadResult.ok ? (
             <PreloadQuery
               query={RECENT_NOTIFICATIONS_QUERY}
               variables={SUSPENSE_VARS}

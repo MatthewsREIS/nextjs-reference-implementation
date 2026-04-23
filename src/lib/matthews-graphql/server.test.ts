@@ -7,10 +7,20 @@ import type { JWT } from "next-auth/jwt";
 // runtime (which currently has a `next/server` resolution mismatch against
 // Next 16). The callbacks we want to test are defined as plain named
 // exports, so they're unaffected by the stub.
+const mockAuth = vi.hoisted(() => vi.fn());
+const mockRedirect = vi.hoisted(() =>
+  vi.fn((url: string) => {
+    // Mirror Next.js: redirect() throws to short-circuit rendering.
+    const e = new Error(`NEXT_REDIRECT:${url}`);
+    throw e;
+  }),
+);
+const mockQuery = vi.hoisted(() => vi.fn());
+
 vi.mock("next-auth", () => ({
   default: () => ({
     handlers: {},
-    auth: () => undefined,
+    auth: mockAuth,
     signIn: () => undefined,
     signOut: () => undefined,
   }),
@@ -18,8 +28,15 @@ vi.mock("next-auth", () => ({
 vi.mock("next-auth/providers/okta", () => ({
   default: () => ({ id: "okta" }),
 }));
+vi.mock("next/navigation", () => ({
+  redirect: mockRedirect,
+}));
 vi.mock("@apollo/client-integration-nextjs", () => ({
-  registerApolloClient: (fn: () => unknown) => ({ query: vi.fn(), PreloadQuery: vi.fn(), getClient: fn }),
+  registerApolloClient: (fn: () => unknown) => ({
+    query: mockQuery,
+    PreloadQuery: vi.fn(),
+    getClient: fn,
+  }),
   ApolloClient: vi.fn().mockImplementation(() => ({})),
   InMemoryCache: vi.fn().mockImplementation(() => ({})),
 }));
@@ -27,8 +44,13 @@ vi.mock("@apollo/client", () => ({
   HttpLink: vi.fn().mockImplementation(() => ({})),
 }));
 
-const { jwtCallback, sessionCallback, _resetRefreshCacheForTests } =
-  await import("./server");
+const {
+  jwtCallback,
+  sessionCallback,
+  requireSession,
+  safeQuery,
+  _resetRefreshCacheForTests,
+} = await import("./server");
 
 const FIXED_TIME = new Date("2026-04-20T12:00:00Z");
 const nowSec = () => Math.floor(FIXED_TIME.getTime() / 1000);
@@ -384,5 +406,105 @@ describe("sessionCallback", () => {
       token: { accessToken: "A" } as JWT,
     });
     expect(result.error).toBeUndefined();
+  });
+});
+
+describe("requireSession", () => {
+  beforeEach(() => {
+    mockAuth.mockReset();
+    mockRedirect.mockClear();
+  });
+
+  test("returns the session when user is present and no error", async () => {
+    const session = {
+      user: { email: "u@example.com" },
+      expires: "2099-01-01T00:00:00.000Z",
+    } as Session;
+    mockAuth.mockResolvedValue(session);
+
+    const result = await requireSession();
+
+    expect(result).toBe(session);
+    expect(mockRedirect).not.toHaveBeenCalled();
+  });
+
+  test("redirects to /login when auth() returns null", async () => {
+    mockAuth.mockResolvedValue(null);
+    await expect(requireSession()).rejects.toThrow("NEXT_REDIRECT:/login");
+    expect(mockRedirect).toHaveBeenCalledWith("/login");
+  });
+
+  test("redirects to /login when session has no user", async () => {
+    mockAuth.mockResolvedValue({
+      expires: "2099-01-01T00:00:00.000Z",
+    } as Session);
+    await expect(requireSession()).rejects.toThrow("NEXT_REDIRECT:/login");
+    expect(mockRedirect).toHaveBeenCalledWith("/login");
+  });
+
+  test("redirects to /login on NoRefreshToken error (session is unrecoverable)", async () => {
+    mockAuth.mockResolvedValue({
+      user: { email: "u@example.com" },
+      expires: "2099-01-01T00:00:00.000Z",
+      error: "NoRefreshToken",
+    } as Session);
+    await expect(requireSession()).rejects.toThrow("NEXT_REDIRECT:/login");
+    expect(mockRedirect).toHaveBeenCalledWith("/login");
+  });
+
+  test("returns the session on RefreshAccessTokenError so the caller can decide how to render it", async () => {
+    // RefreshAccessTokenError is recoverable on the next request — the package
+    // surfaces it on session.error so the page can show a warning instead of
+    // forcing a re-login.
+    const session = {
+      user: { email: "u@example.com" },
+      expires: "2099-01-01T00:00:00.000Z",
+      error: "RefreshAccessTokenError",
+    } as Session;
+    mockAuth.mockResolvedValue(session);
+
+    const result = await requireSession();
+
+    expect(result).toBe(session);
+    expect(mockRedirect).not.toHaveBeenCalled();
+  });
+});
+
+describe("safeQuery", () => {
+  // These tests cover runtime behavior. The `query: {} as never` casts bypass
+  // safeQuery's `ApolloClientType.QueryOptions<TData, TVariables>` parameter
+  // because the document's shape doesn't matter at runtime — type safety is
+  // enforced at real call sites where a TypedDocumentNode flows in.
+  beforeEach(() => {
+    mockQuery.mockReset();
+  });
+
+  test("returns ok:true with data when the underlying query resolves", async () => {
+    mockQuery.mockResolvedValue({ data: { hello: "world" } });
+    const result = await safeQuery({ query: {} as never });
+    expect(result).toEqual({ ok: true, data: { hello: "world" } });
+  });
+
+  test("forwards query and variables to the underlying query()", async () => {
+    mockQuery.mockResolvedValue({ data: { x: 1 } });
+    const document = {} as never;
+    await safeQuery({ query: document, variables: { id: "abc" } });
+    expect(mockQuery).toHaveBeenCalledWith({
+      query: document,
+      variables: { id: "abc" },
+    });
+  });
+
+  test("returns ok:false with the thrown error when the underlying query throws", async () => {
+    const err = new Error("Network 401");
+    mockQuery.mockRejectedValue(err);
+    const result = await safeQuery({ query: {} as never });
+    expect(result).toEqual({ ok: false, error: err });
+  });
+
+  test("returns ok:false even when the underlying query throws a non-Error value", async () => {
+    mockQuery.mockRejectedValue("plain string");
+    const result = await safeQuery({ query: {} as never });
+    expect(result).toEqual({ ok: false, error: "plain string" });
   });
 });
