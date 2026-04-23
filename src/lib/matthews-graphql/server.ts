@@ -238,10 +238,9 @@ export async function requireSession(): Promise<AuthenticatedSession> {
 // the query 401s. On `ok: false` (`reason: "stale-token-401"`), the caller
 // renders a CSR fallback that routes through the client Apollo's
 // response-level `ErrorLink`, which re-fetches the session and retries.
-// Every non-401 error is re-thrown so
-// real bugs (validation, 500s, non-auth failures) surface loudly instead
-// of hiding behind a CSR fallback that would also fail. Do not use this
-// as a general-purpose try/catch.
+// Every non-401 error is re-thrown so real bugs (validation, 500s, non-auth
+// failures) surface loudly instead of hiding behind a CSR fallback that
+// would also fail. Do not use this as a general-purpose try/catch.
 export type SafeQueryResult<TData> =
   | { ok: true; data: TData }
   | { ok: false; reason: "stale-token-401"; error: ServerError };

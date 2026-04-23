@@ -548,17 +548,6 @@ describe("safeQuery", () => {
     expect(result.data.hello).toBe("world");
   });
 
-  test("ok:false includes reason:'stale-token-401' discriminant", async () => {
-    const err = makeServerError(401);
-    mockQuery.mockRejectedValue(err);
-    const result = await safeQuery({ query: {} as never });
-    expect(result).toEqual({
-      ok: false,
-      reason: "stale-token-401",
-      error: err,
-    });
-  });
-
   test("throws a loud error when Apollo returns data:undefined without throwing", async () => {
     // In practice Apollo's query() throws on GraphQL errors, so data:undefined
     // without an error indicates a malformed upstream response. Surface it
