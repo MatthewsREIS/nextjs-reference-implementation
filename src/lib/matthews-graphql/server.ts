@@ -7,6 +7,7 @@ import {
   type ApolloClient as ApolloClientType,
   type OperationVariables,
 } from "@apollo/client";
+import { ServerError } from "@apollo/client/errors";
 import {
   registerApolloClient,
   ApolloClient,
@@ -14,6 +15,15 @@ import {
 } from "@apollo/client-integration-nextjs";
 import { authConfig } from "./config";
 import { requiredEnv } from "./env";
+
+// This module pulls in NextAuth + the Node-only Apollo integration. Importing
+// it from an edge runtime silently ships Node-only code into the edge bundle
+// and fails at request time. Fail loudly at module load instead.
+if (process.env.NEXT_RUNTIME === "edge") {
+  throw new Error(
+    "[matthews-graphql] /server is Node-only and was imported from an edge runtime. Use @/lib/matthews-graphql/proxy for edge code.",
+  );
+}
 
 const OKTA_SCOPES = "openid profile email offline_access";
 
@@ -219,12 +229,15 @@ export async function requireSession(): Promise<AuthenticatedSession> {
 }
 
 // RSC Apollo (`query`, `PreloadQuery`) has no refresh link — a stale access
-// token throws. Wrap calls in `safeQuery` to get a discriminated result so
-// callers can fall back to a CSR component (which DOES refresh) without
-// hand-rolling try/catch on every page.
+// token surfaces as a `ServerError` with `statusCode: 401`. `safeQuery` is
+// scoped specifically to that recovery path: it returns a discriminated
+// result for 401s so the caller can render a CSR fallback (which DOES
+// refresh), and re-throws every other error so real bugs (validation, 500s,
+// non-auth failures) surface loudly instead of hiding behind a CSR fallback
+// that would also fail. Do not use this as a general-purpose try/catch.
 export type SafeQueryResult<TData> =
   | { ok: true; data: TData | undefined }
-  | { ok: false; error: unknown };
+  | { ok: false; error: ServerError };
 
 export async function safeQuery<
   TData = unknown,
@@ -236,6 +249,9 @@ export async function safeQuery<
     const { data } = await query<TData, TVariables>(options);
     return { ok: true, data };
   } catch (error) {
-    return { ok: false, error };
+    if (ServerError.is(error) && error.statusCode === 401) {
+      return { ok: false, error };
+    }
+    throw error;
   }
 }

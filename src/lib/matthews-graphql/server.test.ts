@@ -43,6 +43,21 @@ vi.mock("@apollo/client-integration-nextjs", () => ({
 vi.mock("@apollo/client", () => ({
   HttpLink: vi.fn().mockImplementation(() => ({})),
 }));
+// safeQuery uses ServerError.is() to detect stale-token 401s. Mock the type
+// guard so tests can fabricate "ServerError-shaped" errors without pulling in
+// Apollo's real branded-instance machinery.
+vi.mock("@apollo/client/errors", () => ({
+  ServerError: {
+    is: (e: unknown): boolean =>
+      typeof e === "object" && e !== null && "__isServerError" in e,
+  },
+}));
+
+const makeServerError = (statusCode: number) =>
+  Object.assign(new Error(`ServerError ${statusCode}`), {
+    __isServerError: true,
+    statusCode,
+  });
 
 const {
   jwtCallback,
@@ -495,16 +510,29 @@ describe("safeQuery", () => {
     });
   });
 
-  test("returns ok:false with the thrown error when the underlying query throws", async () => {
-    const err = new Error("Network 401");
+  test("returns ok:false for a ServerError 401 (stale-token fallback path)", async () => {
+    const err = makeServerError(401);
     mockQuery.mockRejectedValue(err);
     const result = await safeQuery({ query: {} as never });
     expect(result).toEqual({ ok: false, error: err });
   });
 
-  test("returns ok:false even when the underlying query throws a non-Error value", async () => {
+  test("re-throws a ServerError that isn't 401 (real upstream error)", async () => {
+    const err = makeServerError(500);
+    mockQuery.mockRejectedValue(err);
+    await expect(safeQuery({ query: {} as never })).rejects.toBe(err);
+  });
+
+  test("re-throws a plain Error — not a stale-token case", async () => {
+    // An agent wrapping a query with a validation bug should see the bug,
+    // not get a silent `{ ok: false }` that renders a CSR fallback.
+    const err = new Error("Validation failed");
+    mockQuery.mockRejectedValue(err);
+    await expect(safeQuery({ query: {} as never })).rejects.toBe(err);
+  });
+
+  test("re-throws a non-Error thrown value", async () => {
     mockQuery.mockRejectedValue("plain string");
-    const result = await safeQuery({ query: {} as never });
-    expect(result).toEqual({ ok: false, error: "plain string" });
+    await expect(safeQuery({ query: {} as never })).rejects.toBe("plain string");
   });
 });
