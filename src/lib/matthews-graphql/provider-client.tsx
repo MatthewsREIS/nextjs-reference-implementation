@@ -14,7 +14,13 @@ import { ApolloWrapper } from "./apollo-client";
 const DEFAULT_REFETCH_SECONDS = 5 * 60;
 const DEBUG_TTL_SECONDS =
   Number(process.env.NEXT_PUBLIC_AUTH_DEBUG_TTL_SECONDS) || undefined;
-const REFETCH_INTERVAL_SECONDS = DEBUG_TTL_SECONDS ?? DEFAULT_REFETCH_SECONDS;
+// Enforce a 10-second minimum even in debug mode — a one-second poll
+// would DoS /api/auth/session with no benefit.
+const MIN_DEBUG_REFETCH_SECONDS = 10;
+const REFETCH_INTERVAL_SECONDS =
+  DEBUG_TTL_SECONDS !== undefined
+    ? Math.max(MIN_DEBUG_REFETCH_SECONDS, DEBUG_TTL_SECONDS)
+    : DEFAULT_REFETCH_SECONDS;
 
 export function MatthewsGraphqlProviderClient({
   children,
