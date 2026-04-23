@@ -10,7 +10,14 @@ The `@/lib/matthews-graphql/server` barrel (`auth`, `query`, `PreloadQuery`, `sa
 
 # Building new routes and components
 
-Everything auth and GraphQL related lives in `src/lib/matthews-graphql/`.
+Everything auth and GraphQL related lives in `src/lib/matthews-graphql/`. The package exposes five import paths, and deep-imports of anything else are lint-blocked:
+
+- `@/lib/matthews-graphql` — `MatthewsGraphqlProvider` (installed once in the root layout; you shouldn't need to import this from a page).
+- `@/lib/matthews-graphql/server` — `auth`, `query`, `PreloadQuery`, `safeQuery`, `requireSession`. Node-only; throws at module load under edge runtime.
+- `@/lib/matthews-graphql/safe-preload` — `SafePreload` (RSC, Node-only).
+- `@/lib/matthews-graphql/csr-query-fallback` — `CsrQueryFallback` (client component, used inside `SafePreload`).
+- `@/lib/matthews-graphql/proxy` — the edge-safe `authorized` callback used by `src/proxy.ts`. The only entry point that can be imported from edge-runtime code.
+
 When adding a page or component under `src/app/**`, trust the wrapper:
 
 - Do **not** create new `ApolloClient` instances.
@@ -22,6 +29,7 @@ When adding a page or component under `src/app/**`, trust the wrapper:
 ## Server-side helpers
 
 - `requireSession()` — returns the session, or redirects to `/login` if there's no user or `session.error === "NoRefreshToken"`. Use this instead of hand-rolling `auth()` + null check + redirect. A `RefreshAccessTokenError` is recoverable on the next request, so it returns the session with the error set — render a warning if you want to surface it.
+- `mutate({ mutation, variables })` — runs a mutation through the RSC Apollo client. Throws on GraphQL/network errors and returns narrowed `data` (no optional unwrap). Use this from Server Actions and Route Handlers; see `src/actions/update-calendar-url.ts` for the worked example. Pair with `revalidatePath(...)` / `revalidateTag(...)` from `next/cache` if the action should re-render RSCs that read the same data. (For client-side mutations, use `useMutation` from `@apollo/client/react` — see `src/components/examples/mutation-example.tsx`.)
 - `safeQuery({ query, variables })` — wraps `query()` and returns `{ ok: true, data }` or `{ ok: false, error }`. Use this for RSC fetches. The RSC Apollo client already refreshes pre-emptively — its custom `fetch` calls `await auth()` on every request, which re-runs the `jwt` callback — so most stale-token cases heal automatically. `safeQuery` catches the residual case: a session whose previous refresh already failed (`session.error === "RefreshAccessTokenError"`) where the cached access token is now rejected by the API. `requireSession()` intentionally passes those sessions through, so the RSC still renders and the query still fires with a stale token. On `ok: false`, fall back to a client component — the client Apollo has a response-level `ErrorLink` that re-fetches the session and retries, recovering those sessions on the next client interaction. (`data` is narrowed to `TData` on the `ok: true` branch — a malformed upstream response that would return `data: undefined` throws from `safeQuery` instead of leaking into the ok branch.) See `src/app/page.tsx` Card 4 for a `SafePreload` example.
 - `SafePreload` — the drop-in for `PreloadQuery`. Pre-warms the cache with `safeQuery`, renders a `<Suspense>`-wrapped consumer on `ok`, and falls back to `<CsrQueryFallback>` on a stale-token 401. You author one `Renderer`, one `ErrorComponent`, and one `loading` node — the wrapper wires both branches. Usage:
   ```tsx
@@ -48,7 +56,7 @@ When adding a page or component under `src/app/**`, trust the wrapper:
 ## Server context coverage
 
 - **RSC pages and layouts** — import `auth`, `query`, `PreloadQuery`, `safeQuery`, `requireSession` from `/server`, plus `SafePreload` from `/safe-preload` if you're preloading for a Suspense consumer. This is the context that can render a CSR fallback, so `safeQuery` / `SafePreload` are the right default for a page whose data fetch could 401 on a stale token.
-- **Server Actions** and **Route Handlers** (`route.ts` under `/api`) are server context, but they **don't have a render plane** — an action returns data or redirects, and a route handler returns a `Response`. Use `auth` / `requireSession` for the session check, and **`query` (not `safeQuery`)** for GraphQL calls. `safeQuery`'s `ok: false` branch is designed for an RSC that wants to hand off to `<CsrQueryFallback>`; there's no equivalent fallback plane inside an action or route handler, so let `query` throw and let the caller (or Next's error boundary, for actions that return to a page) surface it. Don't reach for `SafePreload` / `CsrQueryFallback` here either — they're RSC→CSR primitives.
+- **Server Actions** and **Route Handlers** (`route.ts` under `/api`) are server context, but they **don't have a render plane** — an action returns data or redirects, and a route handler returns a `Response`. Use `auth` / `requireSession` for the session check, **`query` (not `safeQuery`)** for reads, and **`mutate()`** for writes. `safeQuery`'s `ok: false` branch is designed for an RSC that wants to hand off to `<CsrQueryFallback>`; there's no equivalent fallback plane inside an action or route handler, so let `query`/`mutate` throw and let the caller (or Next's error boundary, for actions that return to a page) surface it. Don't reach for `SafePreload` / `CsrQueryFallback` here either — they're RSC→CSR primitives. After a `mutate()` that should re-render an RSC, call `revalidatePath(...)` / `revalidateTag(...)` from `next/cache` — see Card 8 and `src/actions/update-calendar-url.ts` for the recipe.
 - **Edge runtime** is a separate world — see the callout at the top of this document. Don't import `/server`, `/safe-preload`, or `/csr-query-fallback` from an edge handler; use `@/lib/matthews-graphql/proxy`.
 
 If something you need isn't covered by the package, surface the gap (ask the user, or extend the package deliberately). Don't bypass the wrapper with ad-hoc code.
