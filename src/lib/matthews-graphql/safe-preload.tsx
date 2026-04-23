@@ -7,6 +7,7 @@ import type {
 import { PreloadQuery, safeQuery } from "./server";
 import { SafePreloadConsumer } from "./safe-preload-consumer";
 import { CsrQueryFallback } from "./csr-query-fallback";
+import { variablesOrOmit } from "./internal-variables";
 
 // Async React Server Component. The canonical recipe for an
 // "authenticated query with RSC preload + CSR stale-token recovery" collapses
@@ -49,19 +50,19 @@ export async function SafePreload<
   Renderer: ComponentType<{ data: TData }>;
 }) {
   // The cast bridges Apollo's conditional `{} extends TVariables` overload,
-  // which TypeScript can't evaluate for a generic `TVariables`. Omit the
-  // `variables` key entirely when undefined rather than forwarding
-  // `undefined`.
+  // which TypeScript can't evaluate for a generic `TVariables`.
+  // `variablesOrOmit` centralises the "omit vs. forward" rule.
+  const variablesProp = variablesOrOmit(variables);
   const result = await safeQuery<TData, TVariables>({
     query,
-    ...(variables !== undefined ? { variables } : {}),
+    ...variablesProp,
   } as ApolloClientType.QueryOptions<TData, TVariables>);
 
   if (!result.ok) {
     return (
       <CsrQueryFallback
         query={query}
-        {...(variables !== undefined ? { variables } : {})}
+        {...variablesProp}
         loading={loading}
         ErrorComponent={ErrorComponent}
         Renderer={Renderer}
@@ -81,14 +82,11 @@ export async function SafePreload<
     children: ReactNode;
   }) => ReturnType<typeof PreloadQuery>;
   return (
-    <TypedPreloadQuery
-      query={query}
-      {...(variables !== undefined ? { variables } : {})}
-    >
+    <TypedPreloadQuery query={query} {...variablesProp}>
       <Suspense fallback={loading}>
         <SafePreloadConsumer
           query={query}
-          {...(variables !== undefined ? { variables } : {})}
+          {...variablesProp}
           Renderer={Renderer}
         />
       </Suspense>

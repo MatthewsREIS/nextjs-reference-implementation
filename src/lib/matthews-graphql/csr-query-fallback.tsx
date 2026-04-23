@@ -7,6 +7,7 @@ import type {
 } from "@apollo/client";
 import { useQuery } from "@apollo/client/react";
 import { useMounted } from "@/lib/use-mounted";
+import { variablesOrOmit } from "./internal-variables";
 
 // Client-side fallback for an RSC `<SafePreload>` whose server-side
 // `safeQuery` returned ok:false (stale access token after a failed refresh).
@@ -45,15 +46,15 @@ export function CsrQueryFallback<
   const mounted = useMounted();
   // The `as useQuery.Options<…>` assertion bridges Apollo's conditional
   // `{} extends TVariables` overload, which TypeScript can't evaluate with
-  // a generic `TVariables`. It does NOT cast `undefined` into a required
-  // `TVariables` value — omitting the key instead of forwarding `undefined`
-  // is the whole point.
+  // a generic `TVariables`. `variablesOrOmit` centralises the "omit when
+  // undefined rather than forward undefined" rule — passing `undefined`
+  // to `variables` would flip the conditional.
   const {
     data,
     loading: queryLoading,
     error: queryError,
   } = useQuery<TData, TVariables>(query, {
-    ...(variables !== undefined ? { variables } : {}),
+    ...variablesOrOmit(variables),
     skip: !mounted,
   } as useQuery.Options<TData, TVariables>);
 

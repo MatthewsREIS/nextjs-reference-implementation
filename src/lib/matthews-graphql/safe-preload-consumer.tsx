@@ -6,6 +6,7 @@ import type {
   TypedDocumentNode,
 } from "@apollo/client";
 import { useSuspenseQuery } from "@apollo/client/react";
+import { variablesOrOmit } from "./internal-variables";
 
 // Internal to <SafePreload>'s ok:true branch. Reads from the cache that
 // <PreloadQuery> pre-warmed and hands the data to `Renderer`. Lives in its
@@ -30,14 +31,14 @@ export function SafePreloadConsumer<
   Renderer: ComponentType<{ data: TData }>;
 }) {
   // `{} extends TVariables` bridge cast: same pattern as CsrQueryFallback /
-  // SafePreload. Omit the `variables` key entirely when undefined rather
-  // than forwarding `undefined`. The result cast narrows Apollo's dataState
-  // union (which widens `data` to `TData | undefined` across overloads that
-  // include "empty"/"partial" states) — none of those states apply here
-  // because we don't pass `skip` or `returnPartialData`, but TS can't see
-  // that through the generic overload resolution.
+  // SafePreload. `variablesOrOmit` centralises the "omit when undefined
+  // rather than forward undefined" rule. The result cast narrows Apollo's
+  // dataState union (which widens `data` to `TData | undefined` across
+  // overloads that include "empty"/"partial" states) — none of those states
+  // apply here because we don't pass `skip` or `returnPartialData`, but TS
+  // can't see that through the generic overload resolution.
   const { data } = useSuspenseQuery<TData, TVariables>(query, {
-    ...(variables !== undefined ? { variables } : {}),
+    ...variablesOrOmit(variables),
   } as useSuspenseQuery.Options<TVariables>) as { data: TData };
   return <Renderer data={data} />;
 }
