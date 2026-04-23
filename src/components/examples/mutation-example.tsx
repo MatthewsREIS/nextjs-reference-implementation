@@ -62,9 +62,7 @@ export function MutationExample() {
       <p className="text-sm">
         Current <code>calendarURL</code>:{" "}
         <span className="font-mono">
-          {!mounted || queryLoading
-            ? "loading…"
-            : JSON.stringify(current)}
+          {queryLoading ? "loading…" : JSON.stringify(current)}
         </span>
       </p>
 
