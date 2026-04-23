@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
-import { describe, expect, test, vi } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { afterEach, describe, expect, test, vi } from "vitest";
+import { cleanup, render, screen } from "@testing-library/react";
 import { CsrQueryFallback } from "./csr-query-fallback";
 
 // The Apollo `useQuery` hook is the unit under coupling — stub it so we
@@ -11,9 +11,24 @@ vi.mock("@apollo/client/react", () => ({
   useQuery: (...args: unknown[]) => mockUseQuery(...args),
 }));
 
+// `useMounted` returns `true` synchronously under jsdom (useSyncExternalStore
+// reads the client snapshot), so we pin it to `false` to exercise the
+// pre-mount branch where CsrQueryFallback must pass `skip:true` through.
+const mockUseMounted = vi.hoisted(() => vi.fn(() => false));
+vi.mock("@/lib/use-mounted", () => ({
+  useMounted: () => mockUseMounted(),
+}));
+
 const DOC = { kind: "Document" } as never;
 
 describe("CsrQueryFallback", () => {
+  afterEach(() => {
+    cleanup();
+    mockUseQuery.mockReset();
+    mockUseMounted.mockReset();
+    mockUseMounted.mockReturnValue(false);
+  });
+
   test("passes skip:true until mounted (first render is the loading slot)", () => {
     mockUseQuery.mockReturnValue({ data: undefined, loading: true, error: undefined });
     render(
@@ -35,6 +50,7 @@ describe("CsrQueryFallback", () => {
   });
 
   test("renders children({ data }) when loading resolves with data", () => {
+    mockUseMounted.mockReturnValue(true);
     mockUseQuery.mockReturnValue({
       data: { hello: "world" },
       loading: false,
@@ -54,6 +70,7 @@ describe("CsrQueryFallback", () => {
   });
 
   test("renders error slot when useQuery returns an error", () => {
+    mockUseMounted.mockReturnValue(true);
     mockUseQuery.mockReturnValue({
       data: undefined,
       loading: false,
