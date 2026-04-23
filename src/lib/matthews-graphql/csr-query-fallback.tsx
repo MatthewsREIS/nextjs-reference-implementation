@@ -36,18 +36,32 @@ export function CsrQueryFallback<
   Renderer: ComponentType<{ data: TData }>;
 }) {
   const mounted = useMounted();
-  const { data, loading: queryLoading, error: queryError } = useQuery<
-    TData,
-    TVariables
-  >(query, {
-    // The non-null-assertion is safe because Apollo ignores `variables` when
-    // `skip` is true on first render. Once mounted, real variables flow in.
-    variables: variables as TVariables,
+  // The `as useQuery.Options<…>` assertion bridges Apollo's conditional
+  // `{} extends TVariables` overload, which TypeScript can't evaluate with
+  // a generic `TVariables`. It does NOT cast `undefined` into a required
+  // `TVariables` value — omitting the key instead of forwarding `undefined`
+  // is the whole point.
+  const {
+    data,
+    loading: queryLoading,
+    error: queryError,
+  } = useQuery<TData, TVariables>(query, {
+    ...(variables !== undefined ? { variables } : {}),
     skip: !mounted,
-  });
+  } as useQuery.Options<TData, TVariables>);
 
   if (!mounted || queryLoading) return <>{loading}</>;
   if (queryError) return <ErrorComponent error={queryError} />;
-  if (data === undefined) return <>{loading}</>;
+  if (data === undefined) {
+    return (
+      <ErrorComponent
+        error={
+          new Error(
+            "[matthews-graphql] CsrQueryFallback: Apollo returned no data and no error",
+          )
+        }
+      />
+    );
+  }
   return <Renderer data={data} />;
 }

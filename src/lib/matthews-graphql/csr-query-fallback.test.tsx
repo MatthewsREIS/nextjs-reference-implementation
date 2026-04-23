@@ -74,6 +74,47 @@ describe("CsrQueryFallback", () => {
     expect(screen.getByTestId("out").textContent).toBe('{"hello":"world"}');
   });
 
+  test("forwards variables to useQuery after mount (skip flips to false)", () => {
+    mockMounted.value = true;
+    mockUseQuery.mockReturnValue({
+      data: { hello: "world" },
+      loading: false,
+      error: undefined,
+    });
+    render(
+      <CsrQueryFallback
+        query={DOC}
+        variables={{ foo: 1 }}
+        loading={<p>LOADING</p>}
+        ErrorComponent={ErrorComponent}
+        Renderer={Renderer as never}
+      />,
+    );
+    expect(mockUseQuery).toHaveBeenCalledWith(
+      DOC,
+      expect.objectContaining({ variables: { foo: 1 }, skip: false }),
+    );
+  });
+
+  test("renders ErrorComponent when Apollo returns data:undefined after mount", () => {
+    mockMounted.value = true;
+    mockUseQuery.mockReturnValue({
+      data: undefined,
+      loading: false,
+      error: undefined,
+    });
+    render(
+      <CsrQueryFallback
+        query={DOC}
+        variables={{}}
+        loading={<p>LOADING</p>}
+        ErrorComponent={ErrorComponent}
+        Renderer={Renderer as never}
+      />,
+    );
+    expect(screen.getByText(/Apollo returned no data/)).toBeDefined();
+  });
+
   test("renders ErrorComponent when useQuery returns an error", () => {
     mockMounted.value = true;
     mockUseQuery.mockReturnValue({
