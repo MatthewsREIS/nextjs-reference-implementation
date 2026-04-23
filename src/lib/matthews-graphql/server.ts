@@ -228,13 +228,19 @@ export async function requireSession(): Promise<AuthenticatedSession> {
   return session as AuthenticatedSession;
 }
 
-// RSC Apollo (`query`, `PreloadQuery`) has no refresh link — a stale access
-// token surfaces as a `ServerError` with `statusCode: 401`. `safeQuery` is
-// scoped specifically to that recovery path: it returns a discriminated
-// result for 401s so the caller can render a CSR fallback (which DOES
-// refresh), and re-throws every other error so real bugs (validation, 500s,
-// non-auth failures) surface loudly instead of hiding behind a CSR fallback
-// that would also fail. Do not use this as a general-purpose try/catch.
+// RSC Apollo (`query`, `PreloadQuery`) refreshes pre-emptively: the custom
+// `fetch` in the HttpLink above calls `await auth()` on every request, which
+// re-runs the `jwt` callback and rotates an expired access token before the
+// header is written. `safeQuery` catches the residual failure mode — a
+// session whose previous refresh already failed (`session.error ===
+// "RefreshAccessTokenError"`), which `requireSession` intentionally passes
+// through. Such sessions render with a cached-but-rejected access token and
+// the query 401s. On `ok: false`, the caller renders a CSR fallback that
+// routes through the client Apollo's response-level `ErrorLink`, which
+// re-fetches the session and retries. Every non-401 error is re-thrown so
+// real bugs (validation, 500s, non-auth failures) surface loudly instead
+// of hiding behind a CSR fallback that would also fail. Do not use this
+// as a general-purpose try/catch.
 export type SafeQueryResult<TData> =
   | { ok: true; data: TData | undefined }
   | { ok: false; error: ServerError };

@@ -206,8 +206,7 @@ reflexively:
 
 | Component | Gated thing | Why |
 | --- | --- | --- |
-| `suspense-example-csr.tsx` | `useQuery` with `skip: !mounted` | Deliberate CSR-only fallback when the RSC `PreloadQuery` 401s. The RSC Apollo client has no refreshLink, so routing the fetch through the client Apollo lets `refreshLink` rotate the token and retry. |
-| `schema-explorer.tsx` | `useQuery` with `skip: !mounted` | Defers the introspection fetch to the client so a 401 goes through the client-side `refreshLink`. |
+| `suspense-example-csr.tsx` | `useQuery` with `skip: !mounted` | Deliberate CSR-only fallback when the RSC `PreloadQuery` 401s. The RSC Apollo already refreshes pre-emptively via `auth()`, so the 401 means that refresh itself failed (`session.error === "RefreshAccessTokenError"`); routing the fetch through the client Apollo lets its response-level `ErrorLink` re-fetch the session and retry. |
 | `mutation-example.tsx` | `<Button disabled={…}>` | Base UI serializes `disabled` differently across SSR and CSR. Rendering the button post-mount avoids the hydration mismatch. The query itself is not gated. |
 
 If your client component makes a plain `useQuery` and doesn't need any of

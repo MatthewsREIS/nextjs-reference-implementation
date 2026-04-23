@@ -66,9 +66,10 @@ export default async function Home() {
   });
 
   // PreloadQuery can't be wrapped in try/catch at the JSX level. Pre-warm the
-  // server-side cache for card 4 with safeQuery; on a stale-token throw
-  // (the RSC Apollo client has no refresh link) fall back to a client-only
-  // useSuspenseQuery that refreshes via the client-side refreshLink.
+  // server-side cache for card 4 with safeQuery; on a 401 (RSC's pre-emptive
+  // refresh via auth() already failed, so session.error is set and the cached
+  // access token is rejected) fall back to a client-only useSuspenseQuery
+  // that heals via the client Apollo's response-level ErrorLink retry.
   const preloadResult = await safeQuery({
     query: RECENT_NOTIFICATIONS_QUERY,
     variables: SUSPENSE_VARS,
