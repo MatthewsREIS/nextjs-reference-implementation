@@ -191,7 +191,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
 // One ApolloClient per request in RSC, with the Okta access_token attached.
 // `registerApolloClient` ensures the same instance is reused within a single
 // request and a fresh one is built per request — required for token isolation.
-export const { query, PreloadQuery } = registerApolloClient(() => {
+const { getClient, query, PreloadQuery } = registerApolloClient(() => {
   return new ApolloClient({
     cache: new InMemoryCache(),
     link: new HttpLink({
@@ -207,6 +207,39 @@ export const { query, PreloadQuery } = registerApolloClient(() => {
     }),
   });
 });
+
+export { query, PreloadQuery };
+
+// Server-side mutation helper for Server Actions and Route Handlers. Apollo's
+// `client.mutate()` returns `{ data?, error?, extensions? }` without throwing
+// on error, which is the opposite convention from `query()` (which throws).
+// `mutate()` normalises that: it throws on GraphQL/network errors and returns
+// the narrowed `data` so the caller doesn't need to unwrap the optional.
+//
+// Use this in Server Actions (`"use server"`) and Route Handlers; after the
+// mutation, call `revalidatePath(...)` / `revalidateTag(...)` from
+// `next/cache` if the action should re-render any RSCs that read the same
+// data. See `src/app/actions.ts` for the worked example used by Card 8.
+export async function mutate<
+  TData = unknown,
+  TVariables extends OperationVariables = OperationVariables,
+>(
+  options: ApolloClientType.MutateOptions<TData, TVariables>,
+): Promise<TData> {
+  const client = getClient();
+  const result = await client.mutate<TData, TVariables>(options);
+  if (result.error) throw result.error;
+  if (result.data === undefined) {
+    // `errorPolicy: 'ignore' | 'all'` can return undefined data without an
+    // error — but we don't set either policy in this package, so this
+    // branch only fires on a malformed upstream response. Surface it loudly
+    // rather than handing a silently-empty result to the caller.
+    throw new Error(
+      "[matthews-graphql] mutate: Apollo returned no data and no error",
+    );
+  }
+  return result.data;
+}
 
 // Session narrowed to guarantee `user` is present — what callers get back from
 // requireSession() so they don't need optional chaining on `session.user`.

@@ -17,6 +17,7 @@ const mockRedirect = vi.hoisted(() =>
   }),
 );
 const mockQuery = vi.hoisted(() => vi.fn());
+const mockMutate = vi.hoisted(() => vi.fn());
 
 vi.mock("next-auth", () => ({
   default: () => ({
@@ -38,11 +39,20 @@ vi.mock("@apollo/client-integration-nextjs", () => ({
     PreloadQuery: vi.fn(),
     getClient: fn,
   }),
-  ApolloClient: vi.fn().mockImplementation(() => ({})),
-  InMemoryCache: vi.fn().mockImplementation(() => ({})),
+  // These are consumed via `new ApolloClient(...)` etc., so the mock factory
+  // must be a constructable `function` (vitest warns and refuses to `new` a
+  // plain arrow function inside `mockImplementation`).
+  ApolloClient: vi.fn(function () {
+    return { mutate: mockMutate };
+  }),
+  InMemoryCache: vi.fn(function () {
+    return {};
+  }),
 }));
 vi.mock("@apollo/client", () => ({
-  HttpLink: vi.fn().mockImplementation(() => ({})),
+  HttpLink: vi.fn(function () {
+    return {};
+  }),
 }));
 const makeServerError = (statusCode: number) =>
   new ServerError(`ServerError ${statusCode}`, {
@@ -55,6 +65,7 @@ const {
   sessionCallback,
   requireSession,
   safeQuery,
+  mutate,
   _resetRefreshCacheForTests,
 } = await import("./server");
 
@@ -565,6 +576,59 @@ describe("safeQuery", () => {
     mockQuery.mockResolvedValue({ data: undefined });
     await expect(safeQuery({ query: {} as never })).rejects.toThrow(
       /safeQuery: Apollo returned no data/,
+    );
+  });
+});
+
+describe("mutate", () => {
+  // Drive `client.mutate()` through the mocked ApolloClient instance (see
+  // the `vi.mock("@apollo/client-integration-nextjs")` block at the top —
+  // `ApolloClient` constructs an object with `mutate: mockMutate`).
+  // `GRAPHQL_API_URL` is required because the lazy `getClient()` factory
+  // constructs an `HttpLink({ uri: requiredEnv(...) })` on first use.
+  beforeEach(() => {
+    mockMutate.mockReset();
+    vi.stubEnv("GRAPHQL_API_URL", "https://example.com/graphql");
+  });
+
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
+  test("returns narrowed data on a successful mutation", async () => {
+    mockMutate.mockResolvedValue({ data: { updated: { id: "1" } } });
+    const result = await mutate<{ updated: { id: string } }>({
+      mutation: {} as never,
+      variables: { id: "1" },
+    });
+    // Narrowed TData, not TData | undefined — callers can skip optional chaining.
+    expect(result.updated.id).toBe("1");
+  });
+
+  test("forwards mutation options to client.mutate()", async () => {
+    mockMutate.mockResolvedValue({ data: { ok: true } });
+    const doc = {} as never;
+    await mutate({ mutation: doc, variables: { x: 1 } });
+    expect(mockMutate).toHaveBeenCalledWith({
+      mutation: doc,
+      variables: { x: 1 },
+    });
+  });
+
+  test("throws when client.mutate() surfaces an error", async () => {
+    // Apollo v4's mutate() returns { data, error } instead of throwing. The
+    // helper normalises that so callers can use try/catch like they would
+    // around query().
+    const err = new Error("Mutation failed");
+    mockMutate.mockResolvedValue({ error: err });
+    await expect(mutate({ mutation: {} as never })).rejects.toBe(err);
+  });
+
+  test("throws when client.mutate() returns no data and no error", async () => {
+    // Malformed upstream response — don't return silently-empty data.
+    mockMutate.mockResolvedValue({});
+    await expect(mutate({ mutation: {} as never })).rejects.toThrow(
+      /mutate: Apollo returned no data/,
     );
   });
 });

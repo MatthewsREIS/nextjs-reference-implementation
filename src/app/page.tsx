@@ -1,6 +1,7 @@
 import { print } from "graphql";
 import { requireSession, safeQuery } from "@/lib/matthews-graphql/server";
 import {
+  CALENDAR_URL_QUERY,
   NOTIFICATIONS_COUNT_QUERY,
   RECENT_NOTIFICATIONS_QUERY,
 } from "@/graphql/examples";
@@ -15,6 +16,7 @@ import {
 } from "@/components/examples/suspense-example";
 import { SafePreload } from "@/lib/matthews-graphql/safe-preload";
 import { MutationExample } from "@/components/examples/mutation-example";
+import { ServerActionExample } from "@/components/examples/server-action-example";
 import { SchemaExplorer } from "@/components/examples/schema-explorer";
 import {
   Card,
@@ -26,6 +28,10 @@ import {
 
 type NotificationsCountData = {
   notifications: { totalCount: number };
+};
+
+type CalendarUrlData = {
+  UserSettings: { calendarURL: string | null } | null;
 };
 
 const REFRESH_LINK_SNIPPET = `const refreshLink = new ErrorLink(({ error, operation, forward }) => {
@@ -65,6 +71,13 @@ export default async function Home() {
     query: NOTIFICATIONS_COUNT_QUERY,
   });
 
+  const calendarResult = await safeQuery<CalendarUrlData>({
+    query: CALENDAR_URL_QUERY,
+  });
+  const currentCalendarUrl = calendarResult.ok
+    ? (calendarResult.data.UserSettings?.calendarURL ?? null)
+    : null;
+
   return (
     <main className="mx-auto w-full max-w-3xl space-y-6 p-6">
       <div className="flex items-center justify-between">
@@ -101,7 +114,7 @@ export default async function Home() {
             <br />
             The API&rsquo;s public docs don&rsquo;t expose a schema
             reference, and the GraphQL endpoint is behind Okta — so the{" "}
-            <strong>schema introspection</strong> card (7) is the easiest
+            <strong>schema introspection</strong> card (8) is the easiest
             way to browse every type and field available. It runs the
             standard introspection query through the same authenticated
             client the rest of the app uses and prints the result as SDL.
@@ -214,10 +227,32 @@ export default async function Home() {
         </CardContent>
       </Card>
 
-      {/* Card 6 — 401 refresh explainer (static) */}
+      {/* Card 6 — Server Action + revalidatePath (sibling of Card 5) */}
       <Card>
         <CardHeader>
-          <CardTitle>6. 401 access-token refresh</CardTitle>
+          <CardTitle>6. Server Action + revalidatePath</CardTitle>
+          <CardDescription>
+            Same no-op mutation as Card 5, but driven from a{" "}
+            <code>&quot;use server&quot;</code> action instead of a client{" "}
+            <code>useMutation</code>. The RSC pre-fetches the current value via{" "}
+            <code>safeQuery()</code>; the form submit calls{" "}
+            <code>updateCalendarUrlAction()</code> (which uses{" "}
+            <code>mutate()</code> from{" "}
+            <code>@/lib/matthews-graphql/server</code> and then{" "}
+            <code>revalidatePath(&quot;/&quot;)</code>). Use this pattern
+            whenever a mutation should re-render server-computed state
+            without a client fetch waterfall.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <ServerActionExample currentValue={currentCalendarUrl} />
+        </CardContent>
+      </Card>
+
+      {/* Card 7 — 401 refresh explainer (static) */}
+      <Card>
+        <CardHeader>
+          <CardTitle>7. 401 access-token refresh</CardTitle>
           <CardDescription>
             Handled automatically by the Apollo link chain — no UI wiring
             needed. A 401 triggers <code>getSession()</code>, which runs
@@ -231,10 +266,10 @@ export default async function Home() {
         </CardContent>
       </Card>
 
-      {/* Card 7 — Introspection rendered as SDL */}
+      {/* Card 8 — Introspection rendered as SDL */}
       <Card>
         <CardHeader>
-          <CardTitle>7. Schema introspection</CardTitle>
+          <CardTitle>8. Schema introspection</CardTitle>
           <CardDescription>
             Runs the standard introspection query against the API, rebuilds
             a <code>GraphQLSchema</code> via <code>buildClientSchema</code>,
