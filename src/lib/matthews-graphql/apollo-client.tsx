@@ -63,6 +63,12 @@ function makeClient(tokenRef: TokenRef) {
 
     return rxFrom(getSession()).pipe(
       switchMap((session) => {
+        // tokenRef has two writers: the useEffect in ApolloWrapper below
+        // (the canonical owner; runs whenever useSession's data changes),
+        // and this line (which writes the freshly-refreshed token synchronously
+        // so the authLink's retry sees it before the next useSession tick).
+        // The two writes are consistent because getSession() here is the same
+        // call next-auth makes under SessionProvider's polling.
         tokenRef.current = session?.accessToken;
         operation.setContext((prev: { headers?: Record<string, string> }) => ({
           headers: {
