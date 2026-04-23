@@ -1,17 +1,17 @@
 "use client";
 
-import { useSuspenseQuery } from "@apollo/client/react";
 import { CodeBlock } from "@/components/code-block";
-import { RECENT_NOTIFICATIONS_QUERY } from "@/graphql/examples";
 
+// Pure renderer + loading/error slots for Card 4. `<SafePreload>` passes
+// these across the RSC→client boundary as component references, so they
+// live in a "use client" module and are exported as top-level functions
+// (not inline closures). See AGENTS.md § Component reference rule.
 export type NotificationsData = {
   notifications: {
     edges: Array<{ node: { id: string; createdAt: string } }>;
   };
 };
 
-// Pure renderer — used by both the preloaded (useSuspenseQuery) and the
-// CSR-fallback (useQuery) code paths so the two branches stay in sync.
 export function NotificationsView({ data }: { data: NotificationsData }) {
   const edges = data?.notifications?.edges ?? [];
   return (
@@ -35,19 +35,6 @@ export function NotificationsView({ data }: { data: NotificationsData }) {
       )}
     </div>
   );
-}
-
-// Used as the child of <SafePreload>. Reads from the preloaded cache.
-export function SuspenseExample({
-  variables,
-}: {
-  variables: { first: number; after: string | null; read: boolean };
-}) {
-  const { data } = useSuspenseQuery<NotificationsData>(
-    RECENT_NOTIFICATIONS_QUERY,
-    { variables },
-  );
-  return <NotificationsView data={data} />;
 }
 
 export function NotificationsError({ error }: { error: Error }) {

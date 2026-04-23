@@ -1,4 +1,3 @@
-import { Suspense } from "react";
 import { print } from "graphql";
 import { requireSession, safeQuery } from "@/lib/matthews-graphql/server";
 import {
@@ -13,10 +12,8 @@ import {
   NotificationsError,
   NotificationsLoading,
   NotificationsView,
-  SuspenseExample,
 } from "@/components/examples/suspense-example";
 import { SafePreload } from "@/lib/matthews-graphql/safe-preload";
-import { CsrQueryFallback } from "@/lib/matthews-graphql/csr-query-fallback";
 import { MutationExample } from "@/components/examples/mutation-example";
 import { SchemaExplorer } from "@/components/examples/schema-explorer";
 import {
@@ -195,20 +192,10 @@ export default async function Home() {
           <SafePreload
             query={RECENT_NOTIFICATIONS_QUERY}
             variables={SUSPENSE_VARS}
-            fallback={
-              <CsrQueryFallback
-                query={RECENT_NOTIFICATIONS_QUERY}
-                variables={SUSPENSE_VARS}
-                loading={<NotificationsLoading />}
-                ErrorComponent={NotificationsError}
-                Renderer={NotificationsView}
-              />
-            }
-          >
-            <Suspense fallback={<NotificationsLoading />}>
-              <SuspenseExample variables={SUSPENSE_VARS} />
-            </Suspense>
-          </SafePreload>
+            loading={<NotificationsLoading />}
+            ErrorComponent={NotificationsError}
+            Renderer={NotificationsView}
+          />
         </CardContent>
       </Card>
 
