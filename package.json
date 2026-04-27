@@ -4,7 +4,7 @@
   "private": true,
   "license": "MIT",
   "scripts": {
-    "dev": "next dev",
+    "dev": "node scripts/ensure-auth-secret.mjs && next dev",
     "build": "next build",
     "start": "next start",
     "lint": "eslint --max-warnings 0",

@@ -90,18 +90,24 @@ Either works with Auth.js; both are "public clients" to OAuth.
 ## Local setup
 
 ```bash
-# Install dependencies
+# Install dependencies (bun is canonical — bun.lock is the lockfile)
 bun install
+# or: npm install / pnpm install / yarn install
 
-# Generate a session-signing secret
-printf "AUTH_SECRET=%s\n" "$(openssl rand -base64 33)" > .env.local
+# Seed the rest of your local config — edit the placeholders in .env.example, then:
+cp .env.example .env.local   # and fill in the non-secret values
 
-# Append the rest — edit the placeholders in .env.example, then:
-cat .env.example >> .env.local   # and fill in values
-
-# Start the dev server
+# Start the dev server (auto-generates AUTH_SECRET on first run if missing)
 bun dev
+# or: npm run dev / pnpm dev / yarn dev
 ```
+
+The `dev` script runs `scripts/ensure-auth-secret.mjs` (plain ES modules, Node
+≥ 18) before `next dev`. On first boot it generates a 33-byte base64 secret and
+writes (or fills in) `AUTH_SECRET` in `.env.local`. Subsequent runs are no-ops
+as long as `AUTH_SECRET` already has a value (or is exported in your shell
+environment). Because the helper uses only Node stdlib and is invoked via
+`node`, it works under any package manager that can find `node` on `PATH`.
 
 Visit `http://localhost:3000`:
 
