@@ -1,5 +1,6 @@
 import { Suspense, isValidElement } from "react";
 import { beforeEach, describe, expect, test, vi } from "vitest";
+import { parse } from "graphql";
 
 // `SafePreload` internally calls `safeQuery` + `PreloadQuery` from ./server,
 // `SafePreloadConsumer` from ./safe-preload-consumer, and `CsrQueryFallback`
@@ -150,6 +151,57 @@ describe("SafePreload", () => {
         Renderer,
       }),
     ).rejects.toBe(boom);
+  });
+
+  test("strips `loc` from the DocumentNode before passing it across the RSC→client boundary", async () => {
+    // React 19 + Next 16 reject `Location` (a class instance attached by
+    // Apollo's `gql` template tag) across the RSC→client serialization
+    // boundary. SafePreload hands the same document to its inner client
+    // components (and the safeQuery pre-warm), so the loc must be stripped
+    // first. Regression guard.
+    const realDoc = parse("query Q { a }");
+    expect(realDoc.loc).toBeDefined();
+    mockSafeQuery.mockResolvedValue({ ok: true, data: { a: 1 } });
+
+    const element = (await SafePreload({
+      query: realDoc,
+      loading: <p>LOADING</p>,
+      ErrorComponent,
+      Renderer,
+    })) as {
+      props: {
+        query: { loc?: unknown };
+        children: { props: { children: { props: { query: { loc?: unknown } } } } };
+      };
+    };
+
+    const safeQueryArg = mockSafeQuery.mock.calls[0]![0] as {
+      query: { loc?: unknown };
+    };
+    expect(safeQueryArg.query.loc).toBeUndefined();
+    expect(element.props.query.loc).toBeUndefined();
+    expect(
+      element.props.children.props.children.props.query.loc,
+    ).toBeUndefined();
+  });
+
+  test("strips `loc` on the ok:false branch too (CsrQueryFallback receives a plain doc)", async () => {
+    const realDoc = parse("query Q { a }");
+    expect(realDoc.loc).toBeDefined();
+    mockSafeQuery.mockResolvedValue({
+      ok: false,
+      reason: "stale-token-401",
+      error: new Error("401"),
+    });
+
+    const element = (await SafePreload({
+      query: realDoc,
+      loading: <p>LOADING</p>,
+      ErrorComponent,
+      Renderer,
+    })) as { props: { query: { loc?: unknown } } };
+
+    expect(element.props.query.loc).toBeUndefined();
   });
 
   test("omits variables when undefined (no-variables query)", async () => {

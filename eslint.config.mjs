@@ -49,6 +49,7 @@ const eslintConfig = defineConfig([
               group: [
                 "@/lib/matthews-graphql/apollo-client",
                 "@/lib/matthews-graphql/internal-variables",
+                "@/lib/matthews-graphql/internal-document",
                 "@/lib/matthews-graphql/provider",
                 "@/lib/matthews-graphql/provider-client",
                 "@/lib/matthews-graphql/config",

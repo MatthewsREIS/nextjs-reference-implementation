@@ -7,6 +7,7 @@ import type {
 import { PreloadQuery, safeQuery } from "./server";
 import { SafePreloadConsumer } from "./safe-preload-consumer";
 import { CsrQueryFallback } from "./csr-query-fallback";
+import { stripDocumentLoc } from "./internal-document";
 import { variablesOrOmit } from "./internal-variables";
 
 // Async React Server Component. The canonical recipe for an
@@ -53,15 +54,20 @@ export async function SafePreload<
   // which TypeScript can't evaluate for a generic `TVariables`.
   // `variablesOrOmit` centralises the "omit vs. forward" rule.
   const variablesProp = variablesOrOmit(variables);
+  // Strip Apollo's `loc: Location` metadata before the doc crosses the
+  // RSC→client boundary. React 19 + Next 16 reject `Location` (a class
+  // instance) as a non-plain object. Memoised by document identity, so this
+  // runs once per `gql` template across renders. See ./internal-document.
+  const safeDoc = stripDocumentLoc(query);
   const result = await safeQuery<TData, TVariables>({
-    query,
+    query: safeDoc,
     ...variablesProp,
   } as ApolloClientType.QueryOptions<TData, TVariables>);
 
   if (!result.ok) {
     return (
       <CsrQueryFallback
-        query={query}
+        query={safeDoc}
         {...variablesProp}
         loading={loading}
         ErrorComponent={ErrorComponent}
@@ -82,10 +88,10 @@ export async function SafePreload<
     children: ReactNode;
   }) => ReturnType<typeof PreloadQuery>;
   return (
-    <TypedPreloadQuery query={query} {...variablesProp}>
+    <TypedPreloadQuery query={safeDoc} {...variablesProp}>
       <Suspense fallback={loading}>
         <SafePreloadConsumer
-          query={query}
+          query={safeDoc}
           {...variablesProp}
           Renderer={Renderer}
         />
