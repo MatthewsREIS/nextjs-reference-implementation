@@ -1,0 +1,33 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  CI:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: "1.2.x"
+
+      - run: bun install --frozen-lockfile
+
+      - run: bun run lint
+
+      - run: bun run test
+
+      - run: bun run build
+        env:
+          GRAPHQL_API_URL: https://example.com/graphql
+          NEXT_PUBLIC_GRAPHQL_API_URL: https://example.com/graphql
+          # Auth.js requires AUTH_SECRET to be at least 32 bytes; pad the
+          # placeholder so a future length check doesn't silently regress CI.
+          AUTH_SECRET: ci-placeholder-secret-minimum-32-bytes-padding
+          AUTH_TRUST_HOST: "true"
+          AUTH_OKTA_ID: ci-placeholder-id
+          AUTH_OKTA_ISSUER: https://example.okta.com
