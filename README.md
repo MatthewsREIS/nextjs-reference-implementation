@@ -91,21 +91,16 @@ Don't instantiate `ApolloClient`, don't wrap your tree in `SessionProvider`, don
 # Install dependencies
 bun install
 
-# Generate a session-signing secret
-printf "AUTH_SECRET=%s\n" "$(openssl rand -base64 33)" > .env.local
-
-# Append the env-var template, then fill in the values below
-cat .env.example >> .env.local
-
-# Start the dev server
+# Start the dev server — on first run, the predev step creates .env.local
+# from .env.example and fills in a generated AUTH_SECRET.
 bun dev
 ```
 
-Fill in `.env.local` with values for:
+Then fill in the remaining values in `.env.local`:
 
 | Variable | Purpose |
 | --- | --- |
-| `AUTH_SECRET` | Session-signing secret (generated above). |
+| `AUTH_SECRET` | Session-signing secret — auto-generated on first `bun dev` if empty. |
 | `AUTH_OKTA_ID` | Okta OIDC public client ID. |
 | `AUTH_OKTA_ISSUER` | Base Okta domain, e.g. `https://your-org.okta.com` — **no** `/oauth2/default` suffix. This repo uses the Org Authorization Server and hits `/oauth2/v1/token` for refresh. |
 | `AUTH_TRUST_HOST` | Set to `true` behind a proxy or on non-Vercel hosts. Safe to leave `true` locally. |
