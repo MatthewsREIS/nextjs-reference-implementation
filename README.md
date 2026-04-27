@@ -10,7 +10,8 @@ access token. Built with:
 - **Apollo Client 4** + `@apollo/client-integration-nextjs` for the
   RSC/Client-Component split
 - **shadcn/ui** primitives
-- **bun** as package manager / runtime
+- **bun** as the canonical package manager (lockfile is `bun.lock`); npm,
+  pnpm, and yarn also work as long as Node ≥ 18 is on `PATH`
 
 ---
 
@@ -81,26 +82,33 @@ Don't instantiate `ApolloClient`, don't wrap your tree in `SessionProvider`, don
 
 ## Prerequisites
 
-- **bun** ≥ 1.2 (`curl -fsSL https://bun.sh/install | bash`)
+- **Node.js** ≥ 18 — required by the predev bootstrap script (`scripts/ensure-auth-secret.mjs`)
+- **A package manager** — pick one:
+  - **bun** ≥ 1.2 (canonical; `curl -fsSL https://bun.sh/install | bash`)
+  - **npm** (ships with Node)
+  - **pnpm** (`npm i -g pnpm`)
+  - **yarn** (`npm i -g yarn`)
 
 ---
 
 ## Local setup
 
 ```bash
-# Install dependencies
+# Install dependencies (bun is canonical — bun.lock is the lockfile)
 bun install
+# or: npm install / pnpm install / yarn install
 
 # Start the dev server — on first run, the predev step creates .env.local
 # from .env.example and fills in a generated AUTH_SECRET.
 bun dev
+# or: npm run dev / pnpm dev / yarn dev
 ```
 
 Then fill in the remaining values in `.env.local`:
 
 | Variable | Purpose |
 | --- | --- |
-| `AUTH_SECRET` | Session-signing secret — auto-generated on first `bun dev` if empty. |
+| `AUTH_SECRET` | Session-signing secret — auto-generated on first `dev` run if empty. |
 | `AUTH_OKTA_ID` | Okta OIDC public client ID. |
 | `AUTH_OKTA_ISSUER` | Base Okta domain, e.g. `https://your-org.okta.com` — **no** `/oauth2/default` suffix. This repo uses the Org Authorization Server and hits `/oauth2/v1/token` for refresh. |
 | `AUTH_TRUST_HOST` | Set to `true` behind a proxy or on non-Vercel hosts. Safe to leave `true` locally. |
