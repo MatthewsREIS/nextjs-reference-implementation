@@ -4,7 +4,7 @@
   "private": true,
   "license": "MIT",
   "scripts": {
-    "predev": "bun scripts/ensure-auth-secret.ts",
+    "predev": "node scripts/ensure-auth-secret.mjs",
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
